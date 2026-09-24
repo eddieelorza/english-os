@@ -1,0 +1,49 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# Logs and runtime state
+logs/*.log
+logs/.pipeline.lock
+logs/.last-reset
+logs/.session_state.json
+logs/watcher_*.log
+data/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Claude Code session state
+.claude/
+
+# Obsidian vault (personal data + generated notes)
+English_System/
+
+# impeccable tooling (hook cache, local config, review captures)
+.impeccable/
+
+# Duplicados que crea macOS/iCloud ("archivo 2.py") — nunca son fuente
+* [0-9].py
+* [0-9].tsx
+* [0-9].ts
+logs/.jobs.lock
+
+# Audio bajado para shadowing (M20): media, no código.
+data/media/shadow/
+
+# Registro de llamadas de IA (latencia y gasto): local, no va al repo
+logs/ai_calls.jsonl

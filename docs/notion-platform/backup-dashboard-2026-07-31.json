@@ -1,0 +1,176 @@
+{
+ "main_blocks": [
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-804c-9774-ef2e72efd32d",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T04:27:00.000Z",
+   "last_edited_time": "2026-01-31T22:30:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": false,
+   "in_trash": false,
+   "type": "divider",
+   "divider": {},
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-80e7-85f9-c02aac74cfee",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T22:48:00.000Z",
+   "last_edited_time": "2026-01-31T22:52:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": true,
+   "in_trash": false,
+   "type": "callout",
+   "callout": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Este template sirve como una guía de estudio personal para aprender Inglés, de una manera más inmersiva.",
+       "link": null
+      },
+      "annotations": {
+       "bold": false,
+       "italic": false,
+       "strikethrough": false,
+       "underline": false,
+       "code": false,
+       "color": "default"
+      },
+      "plain_text": "Este template sirve como una guía de estudio personal para aprender Inglés, de una manera más inmersiva.",
+      "href": null
+     }
+    ],
+    "icon": null,
+    "color": "default_background"
+   },
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-806c-a3a8-e25742f35f12",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T22:39:00.000Z",
+   "last_edited_time": "2026-07-31T19:30:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": true,
+   "in_trash": false,
+   "type": "column_list",
+   "column_list": {},
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "3adfd5e5-f5a9-80cb-abf3-f450c416a124",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-07-30T05:17:00.000Z",
+   "last_edited_time": "2026-07-30T05:17:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": false,
+   "in_trash": false,
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [],
+    "icon": null,
+    "color": "default"
+   },
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "3aefd5e5-f5a9-8093-a4a0-f682696efa8c",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-07-31T19:29:00.000Z",
+   "last_edited_time": "2026-07-31T19:30:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": true,
+   "in_trash": false,
+   "type": "callout",
+   "callout": {
+    "rich_text": [],
+    "icon": null,
+    "color": "default_background"
+   },
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "3aefd5e5-f5a9-80ce-ab75-e247f82c7ccf",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-07-31T19:30:00.000Z",
+   "last_edited_time": "2026-07-31T19:30:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": false,
+   "in_trash": false,
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [],
+    "icon": null,
+    "color": "default"
+   },
+   "archived": false
+  }
+ ]
+}

@@ -1,0 +1,655 @@
+{
+ "date": "2026-07-29T18:10:11.153492",
+ "main_page_blocks": [
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-804c-9774-ef2e72efd32d",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T04:27:00.000Z",
+   "last_edited_time": "2026-01-31T22:30:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": false,
+   "in_trash": false,
+   "type": "divider",
+   "divider": {},
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-80e7-85f9-c02aac74cfee",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T22:48:00.000Z",
+   "last_edited_time": "2026-01-31T22:52:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": true,
+   "in_trash": false,
+   "type": "callout",
+   "callout": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Este template sirve como una guía de estudio personal para aprender Inglés, de una manera más inmersiva.",
+       "link": null
+      },
+      "annotations": {
+       "bold": false,
+       "italic": false,
+       "strikethrough": false,
+       "underline": false,
+       "code": false,
+       "color": "default"
+      },
+      "plain_text": "Este template sirve como una guía de estudio personal para aprender Inglés, de una manera más inmersiva.",
+      "href": null
+     }
+    ],
+    "icon": null,
+    "color": "default_background"
+   },
+   "archived": false
+  },
+  {
+   "object": "block",
+   "id": "2f9fd5e5-f5a9-806c-a3a8-e25742f35f12",
+   "parent": {
+    "type": "page_id",
+    "page_id": "2f6fd5e5-f5a9-8021-907b-e60603639ea1"
+   },
+   "created_time": "2026-01-31T22:39:00.000Z",
+   "last_edited_time": "2026-02-02T16:18:00.000Z",
+   "created_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "last_edited_by": {
+    "object": "user",
+    "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+   },
+   "has_children": true,
+   "in_trash": false,
+   "type": "column_list",
+   "column_list": {},
+   "archived": false
+  }
+ ],
+ "VOCAB_DB_ID": {
+  "object": "database",
+  "id": "2f7fd5e5-f5a9-80d0-8e59-f90604551776",
+  "cover": null,
+  "icon": {
+   "type": "icon",
+   "icon": {
+    "name": "brain",
+    "color": "green"
+   }
+  },
+  "created_time": "2026-01-29T20:35:00.000Z",
+  "created_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_time": "2026-02-24T06:22:00.000Z",
+  "title": [
+   {
+    "type": "text",
+    "text": {
+     "content": "VOCABULARY MASTER",
+     "link": null
+    },
+    "annotations": {
+     "bold": true,
+     "italic": false,
+     "strikethrough": false,
+     "underline": false,
+     "code": false,
+     "color": "default"
+    },
+    "plain_text": "VOCABULARY MASTER",
+    "href": null
+   }
+  ],
+  "description": [],
+  "is_inline": false,
+  "properties": {
+   "Ease": {
+    "id": "%3DgW%3B",
+    "name": "Ease",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Sync Run": {
+    "id": "%3D%7B%5Ck",
+    "name": "Sync Run",
+    "description": null,
+    "type": "rich_text",
+    "rich_text": {}
+   },
+   "Meaning (EN)": {
+    "id": "%40NbF",
+    "name": "Meaning (EN)",
+    "description": null,
+    "type": "rich_text",
+    "rich_text": {}
+   },
+   "LEAR STATUS": {
+    "id": "CGro",
+    "name": "LEAR STATUS",
+    "description": null,
+    "type": "status",
+    "status": {
+     "options": [
+      {
+       "id": "adbf6d57-241d-44e7-a46f-e83d22e49ae4",
+       "name": "In progress",
+       "color": "yellow",
+       "description": null
+      },
+      {
+       "id": "66681f5d-9481-4138-b74e-14c08bab8fda",
+       "name": "Aprendida",
+       "color": "green",
+       "description": null
+      },
+      {
+       "id": "6b385978-7467-44f3-80c4-c7243fb49597",
+       "name": "Dificil",
+       "color": "red",
+       "description": null
+      }
+     ],
+     "groups": [
+      {
+       "id": "fa3b925f-cc5d-43dc-acb3-0bf10dc607ef",
+       "name": "To-do",
+       "color": "gray",
+       "option_ids": [
+        "adbf6d57-241d-44e7-a46f-e83d22e49ae4"
+       ]
+      },
+      {
+       "id": "4b72110e-d86d-4c9a-a514-f15d95577842",
+       "name": "In progress",
+       "color": "blue",
+       "option_ids": [
+        "66681f5d-9481-4138-b74e-14c08bab8fda"
+       ]
+      },
+      {
+       "id": "988f5500-bd8e-42ef-a5ef-86cbb3e44ac7",
+       "name": "Complete",
+       "color": "green",
+       "option_ids": [
+        "6b385978-7467-44f3-80c4-c7243fb49597"
+       ]
+      }
+     ]
+    }
+   },
+   "Used Today": {
+    "id": "E%7Cm%3E",
+    "name": "Used Today",
+    "description": null,
+    "type": "checkbox",
+    "checkbox": {}
+   },
+   "Last Reviewed": {
+    "id": "FqF%5D",
+    "name": "Last Reviewed",
+    "description": null,
+    "type": "last_edited_time",
+    "last_edited_time": {}
+   },
+   "Anki Note ID": {
+    "id": "GNmy",
+    "name": "Anki Note ID",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Lapses": {
+    "id": "GbDV",
+    "name": "Lapses",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Anki State": {
+    "id": "I%5Dzm",
+    "name": "Anki State",
+    "description": null,
+    "type": "select",
+    "select": {
+     "options": [
+      {
+       "id": "2d777428-fbef-44b4-afc6-4aee6d58bb4b",
+       "name": "New",
+       "color": "pink",
+       "description": null
+      },
+      {
+       "id": "6be7dc7e-b17f-41fc-af8c-491e58fbf0c7",
+       "name": "Learning",
+       "color": "brown",
+       "description": null
+      },
+      {
+       "id": "c6e1ca10-8aed-4416-a7ba-ae9b44c5fe25",
+       "name": "Review",
+       "color": "purple",
+       "description": null
+      },
+      {
+       "id": "52ed8dd2-6ff7-4a46-af89-cef3a7ef8b9e",
+       "name": "Suspended",
+       "color": "gray",
+       "description": null
+      },
+      {
+       "id": "9be4b3c6-9f11-4faa-b8e6-dfa2e707350f",
+       "name": "Buried",
+       "color": "blue",
+       "description": null
+      }
+     ]
+    }
+   },
+   "Deck": {
+    "id": "J%7BBd",
+    "name": "Deck",
+    "description": null,
+    "type": "rich_text",
+    "rich_text": {}
+   },
+   "Meaning (ES)": {
+    "id": "awwn",
+    "name": "Meaning (ES)",
+    "description": null,
+    "type": "rich_text",
+    "rich_text": {}
+   },
+   "Synced On": {
+    "id": "bCYc",
+    "name": "Synced On",
+    "description": null,
+    "type": "date",
+    "date": {}
+   },
+   "Source": {
+    "id": "i%40%5Er",
+    "name": "Source",
+    "description": null,
+    "type": "select",
+    "select": {
+     "options": [
+      {
+       "id": "4d70b345-66c3-4214-9021-b79a7e5bf5cc",
+       "name": "Anki",
+       "color": "red",
+       "description": null
+      },
+      {
+       "id": "ea5bbd05-e711-449b-b3ea-64376ef71e40",
+       "name": "Reading",
+       "color": "green",
+       "description": null
+      },
+      {
+       "id": "2c4cf250-b835-4357-9a72-fd48b51735d5",
+       "name": "Listening",
+       "color": "default",
+       "description": null
+      },
+      {
+       "id": "44e70070-7bfe-4206-a7e0-ad27166d3559",
+       "name": "Manual",
+       "color": "brown",
+       "description": null
+      }
+     ]
+    }
+   },
+   "Pronunciation": {
+    "id": "jnlC",
+    "name": "Pronunciation",
+    "description": null,
+    "type": "rich_text",
+    "rich_text": {}
+   },
+   "Times Used": {
+    "id": "pmzh",
+    "name": "Times Used",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Review Count": {
+    "id": "qs_i",
+    "name": "Review Count",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Word": {
+    "id": "title",
+    "name": "Word",
+    "description": "",
+    "type": "title",
+    "title": {}
+   }
+  },
+  "parent": {
+   "type": "block_id",
+   "block_id": "2f9fd5e5-f5a9-80f4-895f-f409cab537f0"
+  },
+  "url": "https://app.notion.com/p/2f7fd5e5f5a980d08e59f90604551776",
+  "public_url": null,
+  "in_trash": false,
+  "archived": false,
+  "request_id": "ba81fd31-7566-420f-a43c-9ec9a39ef6c5"
+ },
+ "WRITING_DB_ID": {
+  "object": "database",
+  "id": "2f8fd5e5-f5a9-80d1-afdd-d6044ec56c55",
+  "cover": null,
+  "icon": {
+   "type": "icon",
+   "icon": {
+    "name": "drafts",
+    "color": "green"
+   }
+  },
+  "created_time": "2026-01-30T23:36:00.000Z",
+  "created_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_time": "2026-01-31T22:39:00.000Z",
+  "title": [
+   {
+    "type": "text",
+    "text": {
+     "content": "Writing Practice",
+     "link": null
+    },
+    "annotations": {
+     "bold": false,
+     "italic": false,
+     "strikethrough": false,
+     "underline": false,
+     "code": false,
+     "color": "default"
+    },
+    "plain_text": "Writing Practice",
+    "href": null
+   }
+  ],
+  "description": [],
+  "is_inline": false,
+  "properties": {
+   "Word(s)": {
+    "id": "%3Aw%3Er",
+    "name": "Word(s)",
+    "description": null,
+    "type": "relation",
+    "relation": {
+     "database_id": "2f7fd5e5-f5a9-80d0-8e59-f90604551776",
+     "data_source_id": "2f7fd5e5-f5a9-802a-868f-000b16ae5d44",
+     "type": "single_property",
+     "single_property": {}
+    }
+   },
+   "Tense Focus": {
+    "id": "%3B%5BX%5D",
+    "name": "Tense Focus",
+    "description": null,
+    "type": "select",
+    "select": {
+     "options": [
+      {
+       "id": "b16ca8ec-1a89-4100-8890-d76af7afd462",
+       "name": "Present Simple",
+       "color": "pink",
+       "description": null
+      },
+      {
+       "id": "34050475-3f2e-42fc-b5f9-a33927d178b1",
+       "name": "Past Simple",
+       "color": "blue",
+       "description": null
+      },
+      {
+       "id": "ed8a8f17-26c7-4cf8-aff1-7a44a42d3483",
+       "name": "Future (will / going to)",
+       "color": "purple",
+       "description": null
+      },
+      {
+       "id": "0fdd9e1b-53d9-4a52-957c-b5d5cfe28b53",
+       "name": "Present Continuous",
+       "color": "brown",
+       "description": null
+      },
+      {
+       "id": "230ad1d9-930c-4580-b61a-c2b7d8189fd1",
+       "name": "Present Perfect",
+       "color": "red",
+       "description": null
+      }
+     ]
+    }
+   },
+   "Minutes": {
+    "id": "OSPM",
+    "name": "Minutes",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Sentences Count": {
+    "id": "T%7CrU",
+    "name": "Sentences Count",
+    "description": null,
+    "type": "number",
+    "number": {
+     "format": "number"
+    }
+   },
+   "Date": {
+    "id": "%5BrY%60",
+    "name": "Date",
+    "description": null,
+    "type": "date",
+    "date": {}
+   },
+   "Corrected": {
+    "id": "mXlx",
+    "name": "Corrected",
+    "description": null,
+    "type": "checkbox",
+    "checkbox": {}
+   },
+   "Task": {
+    "id": "title",
+    "name": "Task",
+    "description": null,
+    "type": "title",
+    "title": {}
+   }
+  },
+  "parent": {
+   "type": "block_id",
+   "block_id": "2f9fd5e5-f5a9-80f4-895f-f409cab537f0"
+  },
+  "url": "https://app.notion.com/p/2f8fd5e5f5a980d1afddd6044ec56c55",
+  "public_url": null,
+  "in_trash": false,
+  "archived": false,
+  "request_id": "56c8fa55-e948-489e-8b43-2f8932ac6dba"
+ },
+ "READING_DB_ID": {
+  "object": "database",
+  "id": "2f9fd5e5-f5a9-8014-840a-ca0b52f7e048",
+  "cover": null,
+  "icon": {
+   "type": "icon",
+   "icon": {
+    "name": "book",
+    "color": "green"
+   }
+  },
+  "created_time": "2026-01-31T02:16:00.000Z",
+  "created_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_by": {
+   "object": "user",
+   "id": "56dca5d8-5d69-4a0f-861d-dabec143ac63"
+  },
+  "last_edited_time": "2026-03-30T23:01:00.000Z",
+  "title": [
+   {
+    "type": "text",
+    "text": {
+     "content": "Reading Hub",
+     "link": null
+    },
+    "annotations": {
+     "bold": true,
+     "italic": false,
+     "strikethrough": false,
+     "underline": false,
+     "code": true,
+     "color": "default"
+    },
+    "plain_text": "Reading Hub",
+    "href": null
+   }
+  ],
+  "description": [],
+  "is_inline": false,
+  "properties": {
+   "Level": {
+    "id": "Ebyq",
+    "name": "Level",
+    "description": null,
+    "type": "select",
+    "select": {
+     "options": [
+      {
+       "id": "cfff94e0-fd89-412c-b934-4461a6dbed5b",
+       "name": "A2",
+       "color": "brown",
+       "description": null
+      },
+      {
+       "id": "384bb7ca-085a-4225-a89a-b65ddce6f444",
+       "name": "B1",
+       "color": "red",
+       "description": null
+      },
+      {
+       "id": "39446897-bc83-4d68-a5a4-3a9d2ee25678",
+       "name": "B2",
+       "color": "purple",
+       "description": null
+      }
+     ]
+    }
+   },
+   "Date": {
+    "id": "%60TmT",
+    "name": "Date",
+    "description": null,
+    "type": "date",
+    "date": {}
+   },
+   "Status": {
+    "id": "~%3Ead",
+    "name": "Status",
+    "description": null,
+    "type": "select",
+    "select": {
+     "options": [
+      {
+       "id": "f7ee89f9-5ff7-4e5a-8972-00fca79f047a",
+       "name": "Reading",
+       "color": "brown",
+       "description": null
+      },
+      {
+       "id": "0539424f-8ad5-480f-b22c-8709c5133433",
+       "name": "Unread",
+       "color": "blue",
+       "description": null
+      },
+      {
+       "id": "234ff77e-8bcc-4c6a-aeac-1656bccf0662",
+       "name": "Done",
+       "color": "green",
+       "description": null
+      }
+     ]
+    }
+   },
+   "Title": {
+    "id": "title",
+    "name": "Title",
+    "description": null,
+    "type": "title",
+    "title": {}
+   }
+  },
+  "parent": {
+   "type": "block_id",
+   "block_id": "2f9fd5e5-f5a9-80f4-895f-f409cab537f0"
+  },
+  "url": "https://app.notion.com/p/2f9fd5e5f5a98014840aca0b52f7e048",
+  "public_url": null,
+  "in_trash": false,
+  "archived": false,
+  "request_id": "84e4dd41-f641-48fe-bd07-a47a1759cfa0"
+ }
+}

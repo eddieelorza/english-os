@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.english.anki-watcher</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/eddieelorza/Desktop/English_Automation_v2/anki_watcher.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/eddieelorza/Desktop/English_Automation_v2/logs/watcher_out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/eddieelorza/Desktop/English_Automation_v2/logs/watcher_err.log</string>
+</dict>
+</plist>

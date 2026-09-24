@@ -1,0 +1,11 @@
+/* The shared apparatus. Pages import from here, never from each other. */
+export { SLIDE, NEAR, FAR, slide } from './motion'
+export { Page, PageHeader, Section } from './Page'
+export type { PageWidth } from './Page'
+export { Button, ButtonLink } from './Button'
+export type { ButtonVariant, ButtonTone } from './Button'
+export { Choice } from './Choice'
+export type { ChoiceState } from './Choice'
+export { RuledSkeleton, RowsSkeleton, Waiting, ErrorLine, Empty } from './States'
+export { fmt } from './format'
+export { useDelayed, peekCache, primeCache, dropCache } from './cache'

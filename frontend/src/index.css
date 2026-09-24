@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/archivo';
+@import '@fontsource-variable/source-serif-4';
+
+@theme {
+  --color-paper: #fbfaf7;
+  --color-ink: #16181c;
+  --color-ink-soft: #4c4a44;
+  --color-ghost: #8f8c83;
+  --color-rule: #e4e1d6;
+  --color-rule-strong: #c9c5b6;
+  --color-cobalt: #0a52c4;
+  --color-cobalt-deep: #08409a;
+  --color-cobalt-wash: #eef3fc;
+  --color-correction: #c6402d;
+  --font-ui: 'Archivo Variable', 'Helvetica Neue', Arial, sans-serif;
+  --font-book: 'Source Serif 4 Variable', Charter, Georgia, serif;
+}
+
+/* Browser surfaces carry the design too (craft floor). */
+::selection {
+  background: var(--color-cobalt);
+  color: var(--color-paper);
+}
+html {
+  caret-color: var(--color-cobalt);
+  scrollbar-color: var(--color-rule-strong) var(--color-paper);
+}
+*:focus-visible {
+  outline: 2px solid var(--color-cobalt);
+  outline-offset: 2px;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-feature-settings: 'tnum';
+}
+
+a,
+button {
+  cursor: pointer;
+}
+
+.font-book {
+  font-family: var(--font-book);
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

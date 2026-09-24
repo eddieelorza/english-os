@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.eddieelorza.englishos</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT__/.venv/bin/python</string>
+    <string>-m</string>
+    <string>uvicorn</string>
+    <string>app.server:app</string>
+    <!-- Sólo el loopback: la app no se asoma a la red de casa. -->
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--port</string>
+    <string>8770</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT__</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Se levanta si se cae, pero no si sale limpio (así `stop` se queda
+       parado en vez de pelear con launchd). ThrottleInterval evita el
+       bucle de respawn si algo se rompe de verdad. -->
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <!-- Adaptive: arranca como tarea de fondo y el sistema la asciende cuando
+       la usas. `Background` la mantendría siempre estrangulada y estudiar
+       se sentiría lento; `Interactive` gastaría de más sin motivo. -->
+  <key>ProcessType</key>
+  <string>Adaptive</string>
+  <key>LowPriorityIO</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT__/logs/englishos.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT__/logs/englishos.err.log</string>
+</dict>
+</plist>
