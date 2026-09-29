@@ -68,10 +68,17 @@ export default function SpeakingPage() {
       })
   }
 
+  useEffect(() => () => window.clearInterval(timerRef.current), [])
+
+  /* El tema del monólogo lo escribe un modelo: pedirlo sólo al abrir esa
+     pestaña. Pedirlo al entrar a Speaking cargaba Ollama (5 GB) aunque fueras
+     a conversar o a copiar el prompt de ChatGPT. */
+  const asked = useRef(false)
   useEffect(() => {
+    if (mode !== 'monologue' || asked.current) return
+    asked.current = true
     loadPrompt()
-    return () => window.clearInterval(timerRef.current)
-  }, [])
+  }, [mode])
 
   async function startRecording() {
     setError(null)

@@ -60,12 +60,17 @@ export default function ConversationPanel() {
 
   useEffect(() => () => window.clearInterval(timerRef.current), [])
 
-  /* Precalentar al abrir: cargar Ollama (4.3 s) y Kokoro (5.6 s) cuesta ~10 s
-     y ocurriría justo al pulsar el botón. Aquí ocurre mientras se lee la
-     introducción. Si falla, el primer turno sólo tarda más. */
-  useEffect(() => {
+  /* Precalentar cuando el puntero o el foco llegan al botón, no al abrir la
+     pestaña: Ollama son 5 GB de un Mac de 16 y abrir Speaking sólo para copiar
+     el prompt de ChatGPT lo mandaba a swap. Cargar Ollama (4.3 s) y Kokoro
+     (5.6 s) sigue adelantándose unos segundos al clic. Si falla, el primer
+     turno sólo tarda más. */
+  const warmed = useRef(false)
+  const warm = () => {
+    if (warmed.current) return
+    warmed.current = true
     void api.conversationWarm().catch(() => undefined)
-  }, [])
+  }
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [lines, phase])
@@ -203,7 +208,7 @@ export default function ConversationPanel() {
           correcciones — tres como mucho — llegan al final.
         </p>
         {errorLine}
-        <Button onClick={begin} className="mt-8">
+        <Button onClick={begin} onPointerEnter={warm} onFocus={warm} className="mt-8">
           Empezar a hablar
         </Button>
       </Section>

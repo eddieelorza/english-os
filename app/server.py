@@ -864,13 +864,15 @@ def get_speaking_prompt() -> dict:
             raise HTTPException(503, str(exc))
 
 
+# `def`, no `async def`: Whisper + modelo + voz son síncronos y dentro del
+# event loop congelaban TODA la API durante el turno. Así van al threadpool.
 @app.post("/api/speaking/submit", status_code=201)
-async def submit_speaking(audio: UploadFile = File(...),
-                          prompt: str = Form(default="")) -> dict:
+def submit_speaking(audio: UploadFile = File(...),
+                    prompt: str = Form(default="")) -> dict:
     speaking.RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "rec.webm").suffix or ".webm"
     dest = speaking.RECORDINGS_DIR / f"{db.now_iso().replace(':', '-')}{suffix}"
-    dest.write_bytes(await audio.read())
+    dest.write_bytes(audio.file.read())
     with get_db() as conn:
         try:
             return speaking.submit(conn, dest, prompt or None)
@@ -914,11 +916,11 @@ def conversation_start(body: ConversationStart) -> dict:
 
 
 @app.post("/api/conversation/{conv_id}/say", status_code=201)
-async def conversation_say(conv_id: int, audio: UploadFile = File(...)) -> dict:
+def conversation_say(conv_id: int, audio: UploadFile = File(...)) -> dict:
     speaking.RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     suffix = Path(audio.filename or "rec.webm").suffix or ".webm"
     dest = speaking.RECORDINGS_DIR / f"conv{conv_id}-{db.now_iso().replace(':', '-')}{suffix}"
-    dest.write_bytes(await audio.read())
+    dest.write_bytes(audio.file.read())
     with get_db() as conn:
         try:
             return conversation.say(conn, conv_id, dest)
