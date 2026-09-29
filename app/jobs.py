@@ -241,6 +241,11 @@ def _exclusive():
             os.close(fd)
 
 
+# Nombre público: lo usa quien genera fuera de la cola (la rutina de Claude
+# Code produce el audio del podcast) y necesita el mismo turno.
+exclusive = _exclusive
+
+
 def _claim_next(conn: sqlite3.Connection) -> "dict | None":
     """Claim the next job **atomically**.
 

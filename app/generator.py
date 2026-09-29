@@ -150,22 +150,24 @@ class ReadingExists(Exception):
     """El día ya tiene lectura: duplicar el material del día está prohibido."""
 
 
-def skip_reason(conn: sqlite3.Connection, today: str) -> "str | None":
+def skip_reason(conn: sqlite3.Connection, today: str,
+                kind: str = "reading") -> "str | None":
     """¿Toca escribir una lectura? None si sí; si no, el porqué. UNA regla para
     todos los que la piden (la rutina de Claude Code y el trabajo diario de la
     app): 97 de 102 lecturas estaban sin leer, y lo que nadie lee es cómputo
     gastado."""
-    row = conn.execute("SELECT title FROM texts WHERE kind='reading' AND date=? "
-                       "LIMIT 1", (today,)).fetchone()
+    row = conn.execute("SELECT title FROM texts WHERE kind=? AND date=? "
+                       "LIMIT 1", (kind, today)).fetchone()
     if row:
-        return f"today already has a reading ({row['title']})"
+        return f"today already has a {kind} ({row['title']})"
     since = (date.fromisoformat(today) - timedelta(days=UNREAD_WINDOW_DAYS)).isoformat()
     row = conn.execute(
-        "SELECT title FROM texts WHERE kind='reading' AND finished_at IS NULL "
-        "AND date >= ? ORDER BY id DESC LIMIT 1", (since,)).fetchone()
+        "SELECT title FROM texts WHERE kind=? AND finished_at IS NULL "
+        "AND date >= ? ORDER BY id DESC LIMIT 1", (kind, since)).fetchone()
     if row:
         # Sin esto la rutina apilaría una lectura por día aunque no estudie.
-        return f"an unread reading is still waiting ({row['title']})"
+        word = "unread" if kind == "reading" else "unfinished"
+        return f"an {word} {kind} is still waiting ({row['title']})"
     return None
 
 
@@ -189,6 +191,24 @@ def brief(conn: sqlite3.Connection) -> dict:
     }
 
 
+def check_questions(questions: list) -> list:
+    """Las preguntas de comprensión bien formadas, o un ValueError que dice
+    qué falta. Misma regla para la lectura y para el podcast."""
+    if not 3 <= len(questions) <= 5:
+        raise ValueError("questions: send 4 (3-5 accepted)")
+    for i, q in enumerate(questions):
+        opts = q.get("options")
+        ok = (isinstance(q.get("question"), str) and q["question"].strip()
+              and isinstance(q.get("why"), str) and q["why"].strip()
+              and isinstance(opts, list) and len(opts) == 3
+              and all(isinstance(o, str) and o.strip() for o in opts)
+              and isinstance(q.get("answer_index"), int) and 0 <= q["answer_index"] <= 2)
+        if not ok:
+            raise ValueError(f"question {i + 1}: needs question, why, exactly 3 "
+                             f"options and answer_index 0-2")
+    return questions
+
+
 def submit_reading(conn: sqlite3.Connection, data: dict) -> dict:
     today = db.study_day()
     if conn.execute("SELECT 1 FROM texts WHERE kind='reading' AND date=? LIMIT 1",
@@ -206,19 +226,7 @@ def submit_reading(conn: sqlite3.Connection, data: dict) -> dict:
     n = len(lemma.tokens(body))
     if not MIN_WORDS <= n <= MAX_WORDS:
         raise ValueError(f"body has {n} words; it must have {MIN_WORDS}-{MAX_WORDS}")
-    questions = data.get("questions") or []
-    if not 3 <= len(questions) <= 5:
-        raise ValueError("questions: send 4 (3-5 accepted)")
-    for i, q in enumerate(questions):
-        opts = q.get("options")
-        ok = (isinstance(q.get("question"), str) and q["question"].strip()
-              and isinstance(q.get("why"), str) and q["why"].strip()
-              and isinstance(opts, list) and len(opts) == 3
-              and all(isinstance(o, str) and o.strip() for o in opts)
-              and isinstance(q.get("answer_index"), int) and 0 <= q["answer_index"] <= 2)
-        if not ok:
-            raise ValueError(f"question {i + 1}: needs question, why, exactly 3 "
-                             f"options and answer_index 0-2")
+    questions = check_questions(data.get("questions") or [])
     words = []
     for w in data.get("words_target") or []:
         row = conn.execute("SELECT word, normalized FROM words WHERE normalized=?",

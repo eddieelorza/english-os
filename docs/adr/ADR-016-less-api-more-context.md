@@ -52,6 +52,20 @@ quemarían el cupo del plan en llamadas cortas. Como rutina de una corrida al d�
 Si algún día se usa el CLI desde la app, el subproceso debe correr **sin** `ANTHROPIC_API_KEY`,
 o cobra a la API en vez de usar el plan.
 
+### D5 — Podcast y práctica también los puede escribir Claude Code (2026-09-21)
+Lo mismo que D4, generalizado en `app/routine.py`: `GET /api/routine/brief/{reading|podcast|practice}`
+y `POST /api/routine/submit/{kind}`. El `brief` entrega el mismo `system`/`prompt`/`schema` que
+recibiría el modelo local, más `skip` (la regla D1, ahora por tipo de material: `generator.skip_reason(conn, day, kind)`).
+El `submit` valida con el mismo código que usa la app — preguntas de comprensión
+(`generator.check_questions`), preguntas de práctica (`activities.clean_questions`), diálogo de 14+
+turnos — así que un texto flojo se rechaza con el motivo, no se guarda a medias.
+
+- Coste: **0 tokens de API y 0 inferencia local** para el texto. Lo único que sigue costando CPU es
+  el audio del podcast (Kokoro), y corre dentro de `jobs.exclusive()`: nunca dos inferencias a la vez.
+- Una práctica ya contestada no se pisa; una sin contestar sí se reemplaza.
+- Medido hoy: Gemini vivo (`gemini-flash-lite-latest`, 3.2 s con el esquema real de lectura, 323/677
+  tokens), así que la cadena `gemini,ollama` sigue siendo el respaldo automático cuando nadie escribe a mano.
+
 ## Compromisos
 - Una rutina ahorra casi nada de dinero (medio centavo al día); su valor es la calidad y que la
   lectura esté lista antes de sentarse. Necesita la app de Claude abierta (si no, corre al abrirla).

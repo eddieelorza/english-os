@@ -92,9 +92,9 @@ LANGUAGE RULE: the dialogue, the questions and the options are all in ENGLISH \
 in Spanish, because that is the explanation."""
 
 
-def generate(conn: sqlite3.Connection, minutes: int = 5,
-             topic: str = "Random", level: "str | None" = None) -> dict:
-    """Write the dialogue, produce the two-voice audio, store it."""
+def build_prompt(conn: sqlite3.Connection, minutes: int = 5,
+                 topic: str = "Random", level: "str | None" = None) -> dict:
+    """El encargo del episodio: mismo texto para el modelo local y la rutina."""
     if minutes not in MINUTES:
         raise ValueError(f"minutes must be one of {MINUTES}")
     if level is None:
@@ -105,32 +105,42 @@ def generate(conn: sqlite3.Connection, minutes: int = 5,
         raise ValueError("no vocabulary to build an episode from")
     topic_line = ("Pick a topic two colleagues would actually talk about."
                   if topic == "Random" else f"Topic: {topic}.")
-    prompt = (
-        f"Write an episode of about {minutes} minutes "
-        f"({TURNS_FOR[minutes]} turns) at level {level}.\n{topic_line}\n"
-        f"Target words to weave in: {', '.join(w['word'] for w in words)}.\n"
-        "Then the 4 comprehension questions."
-    )
+    return {
+        "level": level, "topic": topic, "minutes": minutes, "words": words,
+        "prompt": (
+            f"Write an episode of about {minutes} minutes "
+            f"({TURNS_FOR[minutes]} turns) at level {level}.\n{topic_line}\n"
+            f"Target words to weave in: {', '.join(w['word'] for w in words)}.\n"
+            "Then the 4 comprehension questions."),
+    }
 
-    result = ai.get_provider("podcast").generate_json(SYSTEM, prompt, SCHEMA,
-                                             max_tokens=8192)
-    turns = [t for t in result["turns"] if t.get("text", "").strip()]
+
+def store(conn: sqlite3.Connection, result: dict, words: "list[dict]",
+          level: str, topic: str, source: str = "generated:podcast") -> dict:
+    """Valida el diálogo, produce el audio de dos voces y lo guarda.
+
+    El audio (Kokoro, local) es lo caro: quien llame desde fuera de la cola
+    debe hacerlo dentro de `jobs._exclusive()` para no poner dos inferencias
+    a pelearse el CPU.
+    """
+    turns = [t for t in result.get("turns", [])
+             if t.get("speaker") in ("A", "B") and str(t.get("text", "")).strip()]
     if not turns:
-        raise ValueError("the model returned an empty dialogue")
-
-    names = {"A": result["speaker_a_name"], "B": result["speaker_b_name"]}
+        raise ValueError("the dialogue is empty")
+    names = {"A": (result.get("speaker_a_name") or "A").strip(),
+             "B": (result.get("speaker_b_name") or "B").strip()}
     audio = tts.narrate_turns(turns)
 
     transcript = "\n".join(f"{names[t['speaker']]}: {t['text']}" for t in turns)
     tid = db.upsert_text(conn, {
         "kind": "podcast",
-        "title": result["title"].strip(),
+        "title": (result.get("title") or "").strip(),
         "date": db.study_day(),
         "level": level,
         "topic": topic,
         "body": transcript,
-        "source": "generated:podcast",
-        "questions": json.dumps(result["questions"][:4], ensure_ascii=False),
+        "source": source,
+        "questions": json.dumps(result.get("questions", [])[:4], ensure_ascii=False),
         "words_target": json.dumps([w["word"] for w in words], ensure_ascii=False),
         "correction": json.dumps({"speakers": names, "turns": turns},
                                  ensure_ascii=False),
@@ -139,6 +149,15 @@ def generate(conn: sqlite3.Connection, minutes: int = 5,
     })
     conn.commit()
     return detail(conn, tid)
+
+
+def generate(conn: sqlite3.Connection, minutes: int = 5,
+             topic: str = "Random", level: "str | None" = None) -> dict:
+    """Write the dialogue, produce the two-voice audio, store it."""
+    spec = build_prompt(conn, minutes, topic, level)
+    result = ai.get_provider("podcast").generate_json(
+        SYSTEM, spec["prompt"], SCHEMA, max_tokens=8192)
+    return store(conn, result, spec["words"], spec["level"], spec["topic"])
 
 
 def detail(conn: sqlite3.Connection, text_id: int) -> dict:

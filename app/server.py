@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from app import (activities, ai, backlog, coach, conversation, db, deck, gate,
                  shadowing,
                  explain, generator,
-                 jobs, lemma, library, model, pause, podcast, session, speaking,
+                 jobs, lemma, library, model, pause, podcast, routine, session, speaking,
                  srs, tts, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -1076,6 +1076,29 @@ def reading_submit(r: RoutineReading) -> dict:
         try:
             return generator.submit_reading(conn, r.model_dump())
         except generator.ReadingExists as exc:
+            raise HTTPException(409, str(exc))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+
+@app.get("/api/routine/brief/{kind}")
+def routine_brief(kind: str) -> dict:
+    """El encargo del material de hoy para Claude Code (ADR-016 D5)."""
+    with get_db() as conn:
+        try:
+            return routine.brief(conn, kind)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+
+@app.post("/api/routine/submit/{kind}", status_code=201)
+def routine_submit(kind: str, data: dict) -> dict:
+    """Recibe el material escrito por Claude Code, lo valida con las reglas de
+    la app y lo guarda. 409 si el día ya lo tiene; 422 con el motivo."""
+    with get_db() as conn:
+        try:
+            return routine.submit(conn, kind, data)
+        except routine.AlreadyExists as exc:
             raise HTTPException(409, str(exc))
         except ValueError as exc:
             raise HTTPException(422, str(exc))

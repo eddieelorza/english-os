@@ -110,30 +110,50 @@ def _ask_quiz(prompt: str, want: int, max_tokens: int) -> "list[dict]":
     for _ in range(2):
         result = provider.generate_json(QUIZ_SYSTEM, prompt, QUIZ_SCHEMA,
                                         max_tokens=max_tokens)
-        questions = []
-        for q in result.get("questions", []):
-            if len(q.get("options", [])) != 3 or not 0 <= q.get("answer_index", -1) < 3:
-                continue
-            q["options"] = [_clean_option(o) for o in q["options"]]
-            q["prompt"] = _clean_option(q.get("prompt", ""))
-            questions.append(q)
+        questions = clean_questions(result.get("questions", []), want)
         if questions:
-            return questions[:want]
+            return questions
     return []
 
 
-def _grammar_quiz(conn: sqlite3.Connection) -> dict:
+def clean_questions(raw: "list[dict]", want: int) -> "list[dict]":
+    """Las preguntas bien formadas, sin los prefijos "a) ". La usan el modelo
+    local y la rutina de Claude Code: una sola definición de "esto sirve"."""
+    questions = []
+    for q in raw:
+        if len(q.get("options", [])) != 3 or not 0 <= q.get("answer_index", -1) < 3:
+            continue
+        q["options"] = [_clean_option(o) for o in q["options"]]
+        q["prompt"] = _clean_option(q.get("prompt", ""))
+        if not q["prompt"] or not str(q.get("why", "")).strip():
+            continue
+        questions.append(q)
+    return questions[:want]
+
+
+def grammar_prompt(conn: sqlite3.Connection) -> dict:
+    """El encargo del quiz de gramática de hoy. Lo usan el generador local y
+    el `brief` de la rutina, para que pidan exactamente lo mismo."""
     focus = tense_focus()
     errs = model.errors(conn)["top_categories"]
     words = [w["word"] for w in model.learning_words(conn, 8)]
-    prompt = (
-        f"Write 6 multiple-choice questions.\n"
-        f"Grammar focus: {focus}.\n"
-        + (f"Target his recurring errors: {', '.join(errs)}.\n" if errs else "")
-        + f"Where natural, use these words he is learning: {', '.join(words)}."
-    )
-    return {"kind": "grammar_quiz", "title": f"Grammar — {focus}",
-            "questions": _ask_quiz(prompt, 6, 4096)}
+    return {
+        "title": f"Grammar — {focus}",
+        "focus": focus,
+        "target_words": words,
+        "error_categories": errs,
+        "prompt": (
+            f"Write 6 multiple-choice questions.\n"
+            f"Grammar focus: {focus}.\n"
+            + (f"Target his recurring errors: {', '.join(errs)}.\n" if errs else "")
+            + f"Where natural, use these words he is learning: {', '.join(words)}."),
+    }
+
+
+def _grammar_quiz(conn: sqlite3.Connection) -> dict:
+    spec = grammar_prompt(conn)
+    return {"kind": "grammar_quiz", "title": spec["title"],
+            "questions": _ask_quiz(spec["prompt"], 6, 4096)}
 
 
 # Qué clase de palabra cabe en el hueco lo dice la palabra que lo precede: tras
@@ -306,27 +326,42 @@ def today_set(conn: sqlite3.Connection, regenerate: bool = False) -> "list[dict]
         built = builders[kind](conn)
         if not built["questions"]:
             continue
-        payload = json.dumps({"questions": built["questions"]}, ensure_ascii=False)
-        if row is not None:
-            conn.execute("UPDATE activities SET payload=?, title=?, updated_at=? "
-                         "WHERE id=?", (payload, built["title"], db.now_iso(), row["id"]))
-            aid = row["id"]
-        else:
-            # ON CONFLICT: a concurrent request may have inserted this kind
-            # while we were generating (a minute on a local model).
-            conn.execute(
-                "INSERT INTO activities (date, kind, title, payload, total, "
-                "created_at, updated_at) VALUES (?,?,?,?,?,?,?) "
-                "ON CONFLICT(date, kind) DO NOTHING",
-                (today, kind, built["title"], payload, len(built["questions"]),
-                 db.now_iso(), db.now_iso()))
-            aid = conn.execute(
-                "SELECT id FROM activities WHERE date=? AND kind=?",
-                (today, kind)).fetchone()["id"]
-        conn.commit()
-        out.append(_row_to_activity(conn.execute(
-            "SELECT * FROM activities WHERE id=?", (aid,)).fetchone()))
+        out.append(store(conn, kind, built["title"], built["questions"]))
     return out
+
+
+def store(conn: sqlite3.Connection, kind: str, title: str,
+          questions: "list[dict]") -> dict:
+    """Guarda la actividad de hoy de ese tipo. Una ya contestada no se pisa."""
+    if kind not in KINDS:
+        raise ValueError(f"unknown activity kind: {kind}")
+    if not questions:
+        raise ValueError("questions is empty")
+    today = db.study_day()
+    row = conn.execute("SELECT * FROM activities WHERE date=? AND kind=?",
+                       (today, kind)).fetchone()
+    if row is not None and row["completed_at"] is not None:
+        raise ValueError(f"today's {kind} is already answered")
+    payload = json.dumps({"questions": questions}, ensure_ascii=False)
+    if row is not None:
+        conn.execute("UPDATE activities SET payload=?, title=?, total=?, "
+                     "updated_at=? WHERE id=?",
+                     (payload, title, len(questions), db.now_iso(), row["id"]))
+        aid = row["id"]
+    else:
+        # ON CONFLICT: a concurrent request may have inserted this kind
+        # while we were generating (a minute on a local model).
+        conn.execute(
+            "INSERT INTO activities (date, kind, title, payload, total, "
+            "created_at, updated_at) VALUES (?,?,?,?,?,?,?) "
+            "ON CONFLICT(date, kind) DO NOTHING",
+            (today, kind, title, payload, len(questions),
+             db.now_iso(), db.now_iso()))
+        aid = conn.execute("SELECT id FROM activities WHERE date=? AND kind=?",
+                           (today, kind)).fetchone()["id"]
+    conn.commit()
+    return _row_to_activity(conn.execute(
+        "SELECT * FROM activities WHERE id=?", (aid,)).fetchone())
 
 
 def submit(conn: sqlite3.Connection, activity_id: int,
