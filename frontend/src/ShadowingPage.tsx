@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { api } from './api'
-import type { ShadowSession, ShadowSummary } from './api'
+import type { Job, ShadowSession, ShadowSummary } from './api'
 import { mediaUrl } from './Audio'
-import { Button, ErrorLine, Page, PageHeader, SLIDE, Section, Waiting, fmt } from './ui'
+import {
+  Button,
+  ErrorLine,
+  Page,
+  PageHeader,
+  SLIDE,
+  Section,
+  Waiting,
+  describeError,
+  fmt,
+  queueNote,
+  useJobWatch,
+} from './ui'
+
+/* When the work actually started, for the stopwatch in `Waiting`. The server
+   writes local wall-clock ISO without a zone, which `Date.parse` reads as
+   local — which is what it is. */
+function jobSince(job: Job | null): number | null {
+  if (!job) return null
+  const t = Date.parse(job.started_at ?? job.created_at)
+  return Number.isFinite(t) ? t : null
+}
 
 const SPEEDS = [1, 0.85, 0.7] as const
 
@@ -17,9 +38,12 @@ export default function ShadowingPage() {
   const [sessions, setSessions] = useState<ShadowSummary[]>([])
   const [session, setSession] = useState<ShadowSession | null>(null)
   const [url, setUrl] = useState('')
-  const [working, setWorking] = useState(false)
+  /* Solo mientras el POST está en vuelo: a partir de ahí manda el trabajo. */
+  const [sending, setSending] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /* Qué intentaba abrirse cuando falló, para que "reintentar" reintente eso. */
+  const [lastOpened, setLastOpened] = useState<number | null>(null)
   const [cursor, setCursor] = useState(0)
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1)
   const [playing, setPlaying] = useState(false)
@@ -27,9 +51,35 @@ export default function ShadowingPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const stopAtRef = useRef<number>(0)
 
-  useEffect(() => {
+  /* El vídeo que pidió *esta* visita. Si el trabajo lo encoló otra pestaña, se
+     ve la espera pero no se abre solo encima de lo que estés haciendo. */
+  const asked = useRef<number | null>(null)
+
+  function refreshList() {
     api.shadowList().then((r) => setSessions(r.sessions)).catch(() => undefined)
-  }, [])
+  }
+  useEffect(refreshList, [])
+
+  /* Bajar y transcribir tarda minutos: la espera vive en el worker, no en este
+     componente, así que salir de la pantalla y volver la recupera. Esto es lo
+     que hace cierta la promesa de abajo ("puedes irte a otra pantalla"). */
+  const { job, pending, follow, clear } = useJobWatch(['shadow'], (done) => {
+    refreshList()
+    const sid = (done.result as { session_id?: number } | null)?.session_id
+    if (done.status !== 'done' || !sid) {
+      setError(describeError(done.error, 'No pude preparar ese vídeo.'))
+      setProgress(null)
+      clear()
+      return
+    }
+    if (asked.current === done.id && !session) {
+      setUrl('')
+      void load(sid)
+    }
+    setProgress(null)
+    clear()
+  })
+  const working = sending || (job != null && (job.status === 'queued' || job.status === 'running'))
 
   /* Un solo <audio> para todo el vídeo: se salta al inicio de la línea y se
      para en su final. Cargar un archivo por línea multiplicaría las peticiones
@@ -83,22 +133,26 @@ export default function ShadowingPage() {
 
   async function load(id: number) {
     setError(null)
+    setLastOpened(id)
     try {
       const s = await api.shadowGet(id)
       setSession(s)
       setCursor(s.lines.findIndex((l) => !l.done_at) === -1
         ? 0
         : s.lines.findIndex((l) => !l.done_at))
-    } catch {
-      setError('No pude abrir esa sesión.')
+    } catch (e) {
+      setError(
+        describeError(e instanceof Error ? e.message : null, 'No pude abrir esa sesión.'),
+      )
     }
   }
 
   async function submit() {
     if (!url.trim() || working) return
-    setWorking(true)
+    setSending(true)
     setError(null)
     setProgress(null)
+    setLastOpened(null)
     try {
       const created = await api.shadowCreate(url.trim())
       if (created.ready && created.session) {
@@ -107,30 +161,22 @@ export default function ShadowingPage() {
         setUrl('')
       } else if (created.job_id) {
         // El trabajo puede tardar varios minutos: transcribir va a ~0.25x del
-        // audio y encima espera turno en la cola. Se sondea en vez de dejar
-        // una petición HTTP colgada, que se cae sola.
+        // audio y encima espera turno en la cola. No se sondea aquí: de eso se
+        // encarga el watch, que sobrevive a que te vayas de la pantalla.
         setProgress(created.title || 'ese vídeo')
-        let job = await api.job(created.job_id)
-        while (job.status === 'queued' || job.status === 'running') {
-          await new Promise((r) => setTimeout(r, 2000))
-          job = await api.job(created.job_id)
-        }
-        if (job.status !== 'done') {
-          throw new Error(job.error || 'La transcripción falló.')
-        }
-        const sid = (job.result as { session_id?: number } | null)?.session_id
-        if (sid) {
-          setSession(await api.shadowGet(sid))
-          setCursor(0)
-          setUrl('')
-        }
+        asked.current = created.job_id
+        follow(await api.job(created.job_id))
       }
-      api.shadowList().then((r) => setSessions(r.sessions)).catch(() => undefined)
+      refreshList()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No pude preparar ese vídeo.')
+      setError(
+        describeError(
+          e instanceof Error ? e.message : null,
+          'No pude preparar ese vídeo. ¿Está corriendo el servidor local?',
+        ),
+      )
     }
-    setProgress(null)
-    setWorking(false)
+    setSending(false)
   }
 
   async function advance() {
@@ -174,16 +220,28 @@ export default function ShadowingPage() {
             </Button>
           </div>
           {working && (
-            <Waiting>
+            <Waiting
+              since={jobSince(job)}
+              note={job ? queueNote(job, pending) : undefined}
+            >
               {progress
                 ? `Preparando «${progress}». Transcribir tarda algo más que la
                    propia duración del vídeo, y antes espera turno si hay otra
                    cosa generándose. Puedes irte a otra pantalla: sigue en
                    marcha.`
-                : 'Leyendo el vídeo…'}
+                : job
+                  ? `Hay un vídeo preparándose. Puedes irte a otra pantalla: sigue
+                     en marcha.`
+                  : 'Leyendo el vídeo…'}
             </Waiting>
           )}
-          {error && <ErrorLine>{error}</ErrorLine>}
+          {error && (
+            <ErrorLine
+              onRetry={() => void (lastOpened != null ? load(lastOpened) : submit())}
+            >
+              {error}
+            </ErrorLine>
+          )}
         </Section>
 
         {sessions.length > 0 && (
@@ -228,6 +286,9 @@ export default function ShadowingPage() {
         {session.channel} · {fmt(session.done)}/{fmt(total)} líneas
       </p>
 
+      {/* Sin `onRetry` a propósito: no es un fallo, es un aviso sobre la
+          transcripción que ya tienes. Reintentar no la mejoraría — el vídeo es
+          el que es — y ofrecer una salida falsa es peor que no ofrecer ninguna. */}
       {session.confidence !== null && session.confidence <= -0.8 && (
         <ErrorLine className="max-w-[54ch]">
           La transcripción de este vídeo salió poco fiable. Fíate de lo que oyes

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button } from './Button'
+import { clock, useElapsed } from './jobs'
 import { useDelayed } from './cache'
 
 /* Loading, waiting, failing and empty — the four states every lesson has and
@@ -75,11 +76,26 @@ export function RowsSkeleton({
 }
 
 /* Something is being written by the coach. Ghost italic, announced politely,
-   and able to carry the queue note the generators already write. */
-export function Waiting({ children, note }: { children: ReactNode; note?: ReactNode }) {
+   and able to carry the queue note the generators already write.
+
+   `since` (a timestamp) starts the stopwatch: on this laptop a reply takes
+   15–80 s, and a wait with no clock is indistinguishable from a hang. */
+export function Waiting({
+  children,
+  note,
+  since,
+}: {
+  children: ReactNode
+  note?: ReactNode
+  since?: number | null
+}) {
+  const seconds = useElapsed(since ?? null)
   return (
     <div role="status" aria-live="polite" className="mt-6">
-      <p className="font-book text-ghost text-[15px] italic">{children}</p>
+      <p className="font-book text-ghost text-[15px] italic">
+        {children}
+        {since != null && <span className="font-ui tnum not-italic"> {clock(seconds)}</span>}
+      </p>
       {note && <p className="font-book text-ghost mt-1 text-[13px] italic">{note}</p>}
     </div>
   )

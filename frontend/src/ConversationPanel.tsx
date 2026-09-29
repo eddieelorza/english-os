@@ -3,9 +3,27 @@ import { AnimatePresence, motion } from 'motion/react'
 import { api } from './api'
 import { mediaUrl } from './Audio'
 import type { ConversationSummary } from './api'
-import { Button, ErrorLine, SLIDE, Section, Waiting } from './ui'
+import { Button, ErrorLine, SLIDE, Section, Waiting, describeError } from './ui'
 
 type Line = { who: 'you' | 'partner'; text: string; audio?: string | null }
+
+/* Cada fallo dice qué pasó y qué botón lo deshace. Nada de "revisa el modelo
+   en Reading": la causa se nombra aquí y el reintento está aquí. */
+const ERROR_FALLBACK = {
+  open: 'No pude abrir la conversación.',
+  turn: 'Se cayó el turno, pero tu grabación sigue aquí.',
+  silent: 'No se oyó nada. ¿El micrófono estaba mudo?',
+  mic: 'No pude usar el micrófono. Dale permiso al navegador.',
+  close: 'No pude cerrar la conversación. La charla sigue abierta.',
+} as const
+
+const RETRY_LABEL = {
+  open: 'Intentar otra vez',
+  turn: 'Reenviar lo que dijiste',
+  silent: 'Grabar otra vez',
+  mic: 'Probar el micrófono otra vez',
+  close: 'Cerrar otra vez',
+} as const
 type Phase = 'idle' | 'opening' | 'ready' | 'recording' | 'thinking' | 'closing' | 'done'
 
 /* Hablar con alguien, no responder a una pregunta.
@@ -25,10 +43,17 @@ export default function ConversationPanel() {
   const [lines, setLines] = useState<Line[]>([])
   const [summary, setSummary] = useState<ConversationSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /* Un turno perdido se reintenta reenviando el audio; un turno mudo se
+     reintenta hablando otra vez. Son dos salidas distintas. */
+  const [errorKind, setErrorKind] = useState<'open' | 'turn' | 'silent' | 'mic' | 'close'>('turn')
   const [seconds, setSeconds] = useState(0)
+  /* El reloj de la espera: un turno tarda ~5 s y el cierre bastante más. */
+  const [waitSince, setWaitSince] = useState<number | null>(null)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  /* Lo último que se grabó, para poder reenviarlo si el turno se cae. */
+  const lastBlobRef = useRef<Blob | null>(null)
   const timerRef = useRef<number | undefined>(undefined)
   const endRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -58,15 +83,19 @@ export default function ConversationPanel() {
   async function begin() {
     setError(null)
     setPhase('opening')
+    setWaitSince(Date.now())
     try {
       const r = await api.conversationStart()
       setConvId(r.conversation_id)
       setLines([{ who: 'partner', text: r.reply, audio: r.audio }])
       speak(r.audio)
       setPhase('ready')
-    } catch {
-      setError('No pude abrir la conversación — revisa el modelo en Reading.')
+    } catch (e: unknown) {
+      setErrorKind('open')
+      setError(e instanceof Error ? e.message : String(e))
       setPhase('idle')
+    } finally {
+      setWaitSince(null)
     }
   }
 
@@ -79,26 +108,33 @@ export default function ConversationPanel() {
       rec.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data)
       rec.onstop = () => {
         stream.getTracks().forEach((t) => t.stop())
-        void send(new Blob(chunksRef.current, { type: 'audio/webm' }))
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        lastBlobRef.current = blob
+        void send(blob)
       }
       recorderRef.current = rec
       rec.start()
       setSeconds(0)
       timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000)
       setPhase('recording')
-    } catch {
-      setError('No pude usar el micrófono. Dale permiso al navegador.')
+    } catch (e: unknown) {
+      setErrorKind('mic')
+      setError(e instanceof Error ? e.message : String(e))
     }
   }
 
   function stopRecording() {
     window.clearInterval(timerRef.current)
     recorderRef.current?.stop()
+    setWaitSince(Date.now())
     setPhase('thinking')
   }
 
   async function send(blob: Blob) {
     if (convId == null) return
+    setError(null)
+    setPhase('thinking')
+    setWaitSince((t) => t ?? Date.now())
     try {
       const r = await api.conversationSay(convId, blob)
       setLines((prev) => [
@@ -108,27 +144,53 @@ export default function ConversationPanel() {
       ])
       speak(r.audio)
       setPhase('ready')
-    } catch (e) {
+    } catch (e: unknown) {
       // 422 = no se oyó nada. Merece su propio mensaje: "algo falló" no dice
       // qué hacer, "no se oyó nada" sí.
-      const silent = e instanceof Error && /oyó|silen/i.test(e.message)
-      setError(silent ? 'No se oyó nada. ¿El micrófono estaba mudo?'
-                      : 'Se cayó el turno. Prueba otra vez.')
+      const raw = e instanceof Error ? e.message : String(e)
+      setErrorKind(/oyó|silen|422/i.test(raw) ? 'silent' : 'turn')
+      setError(raw)
       setPhase('ready')
+    } finally {
+      setWaitSince(null)
     }
   }
 
   async function end() {
     if (convId == null) return
+    setError(null)
     setPhase('closing')
+    setWaitSince(Date.now())
     audioRef.current?.pause()
     try {
       setSummary(await api.conversationFinish(convId))
-    } catch {
-      setError('No pude cerrar la conversación.')
+      setPhase('done')
+    } catch (e: unknown) {
+      // Cerrar es lo último que se hace: si falla, la charla sigue viva y se
+      // puede reintentar. Antes se pasaba a 'done' sin resumen y la pantalla
+      // se quedaba sin nada que pulsar.
+      setErrorKind('close')
+      setError(e instanceof Error ? e.message : String(e))
+      setPhase('ready')
+    } finally {
+      setWaitSince(null)
     }
-    setPhase('done')
   }
+
+  /* El mismo error, la salida que le corresponde. */
+  function retry() {
+    if (errorKind === 'open') return void begin()
+    if (errorKind === 'close') return void end()
+    if (errorKind === 'turn' && lastBlobRef.current) return void send(lastBlobRef.current)
+    return void startRecording()
+  }
+
+  const errorLine =
+    error === null ? null : (
+      <ErrorLine onRetry={retry} retryLabel={RETRY_LABEL[errorKind]} className="mb-4">
+        {describeError(error, ERROR_FALLBACK[errorKind])}
+      </ErrorLine>
+    )
 
   const mine = lines.filter((l) => l.who === 'you').length
 
@@ -140,7 +202,7 @@ export default function ConversationPanel() {
           si dices algo mal, la respuesta lo trae bien dicho y sigues. Las
           correcciones — tres como mucho — llegan al final.
         </p>
-        {error && <ErrorLine>{error}</ErrorLine>}
+        {errorLine}
         <Button onClick={begin} className="mt-8">
           Empezar a hablar
         </Button>
@@ -183,11 +245,17 @@ export default function ConversationPanel() {
       </div>
 
       <div className="border-rule mt-6 border-t pt-6 text-center">
-        {error && <ErrorLine className="mb-4">{error}</ErrorLine>}
+        {errorLine}
 
-        {phase === 'opening' && <Waiting>Sam está pensando cómo empezar</Waiting>}
-        {phase === 'thinking' && <Waiting>Escuchando y respondiendo</Waiting>}
-        {phase === 'closing' && <Waiting>Repasando lo que dijiste</Waiting>}
+        {phase === 'opening' && (
+          <Waiting since={waitSince}>Sam está pensando cómo empezar</Waiting>
+        )}
+        {phase === 'thinking' && (
+          <Waiting since={waitSince}>Escuchando y respondiendo</Waiting>
+        )}
+        {phase === 'closing' && (
+          <Waiting since={waitSince}>Repasando lo que dijiste</Waiting>
+        )}
 
         {phase === 'ready' && <Button onClick={startRecording}>Hablar</Button>}
 

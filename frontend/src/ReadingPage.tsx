@@ -1,10 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { api, runJob } from './api'
-import type { AIStatus, LibraryDay } from './api'
+import { api } from './api'
+import type { AIStatus, Job, LibraryDay } from './api'
 import { SpeakerIcon } from './Audio'
-import { Page, PageHeader, Section, Button, ErrorLine, Empty, Waiting, slide, fmt, RowsSkeleton, peekCache, primeCache } from './ui'
+import {
+  Page,
+  PageHeader,
+  Section,
+  Button,
+  ErrorLine,
+  Empty,
+  Waiting,
+  slide,
+  fmt,
+  useJobWatch,
+  queueNote,
+  describeError,
+  RowsSkeleton,
+  peekCache,
+  primeCache,
+} from './ui'
+
+/* When the work actually started, for the stopwatch in `Waiting`. The server
+   writes local wall-clock ISO without a zone, which `Date.parse` reads as
+   local — which is what it is. */
+function jobSince(job: Job | null): number | null {
+  if (!job) return null
+  const t = Date.parse(job.started_at ?? job.created_at)
+  return Number.isFinite(t) ? t : null
+}
 
 const GEN_LEVELS = ['B1', 'B1+', 'B2']
 const GEN_MINUTES = [5, 10, 15]
@@ -42,10 +67,39 @@ export default function ReadingPage() {
   const [genLevel, setGenLevel] = useState('B1')
   const [genMinutes, setGenMinutes] = useState(5)
   const [genTopic, setGenTopic] = useState('Random')
-  const [generating, setGenerating] = useState(false)
-  const [genStage, setGenStage] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  /* The id of the job *this* visit asked for. A reading job can also be in
+     flight because the end of a review session queued one, or because another
+     tab asked — those we show, but they are not a reason to move anyone. */
+  const asked = useRef<number | null>(null)
+
+  /* The wait outlives the screen (M23): the state lives in the worker, not in
+     this component, so leaving and coming back re-attaches to the same job. */
+  const { job: genJob, pending, follow, clear } = useJobWatch(['reading'], (job) => {
+    loadShelf()
+    const id = job.result && (job.result as { text_id?: number }).text_id
+    if (job.status === 'failed' || !id) {
+      setGenError(
+        describeError(
+          job.error,
+          'The coach could not write the lesson. Try again in a moment.',
+        ),
+      )
+      clear()
+      return
+    }
+    /* Navigation, decided: only the visit that pressed the button gets moved
+       to the finished text. The watch already stops when the screen unmounts,
+       so we never navigate from a dead component; the `asked` guard covers the
+       other half — a job you are merely watching (queued by session end, or by
+       another tab) finishes on the shelf, quietly, where you can choose it. */
+    if (asked.current === job.id) navigate(`/reading/${id}`)
+    else clear()
+  })
+
+  const generating = genJob != null && (genJob.status === 'queued' || genJob.status === 'running')
 
   const [recommended, setRecommended] = useState<string | null>(null)
 
@@ -86,31 +140,22 @@ export default function ReadingPage() {
 
   async function generate() {
     if (generating) return
-    setGenerating(true)
     setGenError(null)
-    setGenStage('Queued')
     try {
-      const job = await runJob(
-        'reading',
-        { level: genLevel, minutes: genMinutes, topic: genTopic },
-        (j) => {
-          const ahead = (j.pending ?? 1) - 1
-          setGenStage(
-            j.status === 'running'
-              ? 'Writing'
-              : ahead > 0
-                ? `Waiting · ${ahead} ahead`
-                : 'Queued',
-          )
-        },
+      const job = await api.enqueue('reading', {
+        level: genLevel,
+        minutes: genMinutes,
+        topic: genTopic,
+      })
+      asked.current = job.id
+      follow(job)
+    } catch (e) {
+      setGenError(
+        describeError(
+          e instanceof Error ? e.message : null,
+          'The lesson could not be ordered. Is the local server running?',
+        ),
       )
-      const id = job.result && (job.result as { text_id?: number }).text_id
-      if (job.status === 'failed' || !id) throw new Error(job.error ?? 'no text')
-      navigate(`/reading/${id}`)
-    } catch {
-      setGenError('The coach could not write the lesson. Check the AI setup and try again.')
-      setGenerating(false)
-      setGenStage(null)
     }
   }
 
@@ -172,20 +217,21 @@ export default function ReadingPage() {
                 {generating ? 'The coach is writing…' : 'Write my reading'}
               </Button>
             </div>
-            {generating && (
+            {generating && genJob && (
               <Waiting
+                since={jobSince(genJob)}
                 note={
-                  genStage === 'Writing'
+                  genJob.status === 'running'
                     ? 'Weaving your learning words into a story — this takes a moment.'
-                    : genStage?.startsWith('Waiting')
-                      ? `In line behind other work — ${genStage.split('· ')[1]}. One at a time keeps the laptop cool.`
-                      : 'Queued — starting shortly.'
+                    : queueNote(genJob, pending)
                 }
               >
-                The coach is writing…
+                {asked.current === genJob.id
+                  ? 'The coach is writing…'
+                  : 'The coach is already writing a reading for today…'}
               </Waiting>
             )}
-            {genError && <ErrorLine>{genError}</ErrorLine>}
+            {genError && <ErrorLine onRetry={generate}>{genError}</ErrorLine>}
           </>
         )}
       </Section>

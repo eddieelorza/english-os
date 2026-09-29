@@ -6,7 +6,18 @@ import { PlayButton } from './Audio'
 import ReadingPlayer from './ReadingPlayer'
 import ComprehensionQuiz from './ComprehensionQuiz'
 import type { LexiconEntry, SentenceExplanation, TextDetail, WordStatus } from './api'
-import { Page, PageHeader, Button, ButtonLink, RuledSkeleton, ErrorLine, Waiting, SLIDE, fmt } from './ui'
+import {
+  Page,
+  PageHeader,
+  Button,
+  ButtonLink,
+  RuledSkeleton,
+  ErrorLine,
+  Waiting,
+  SLIDE,
+  describeError,
+  fmt,
+} from './ui'
 
 const TOKEN_SPLIT = /([A-Za-z]+(?:['’][A-Za-z]+)?)/
 /* Must mirror tts.split_sentences on the server, or the karaoke marks and the
@@ -33,7 +44,7 @@ interface Popup {
 export default function ReaderPage() {
   const { id } = useParams()
   const [text, setText] = useState<TextDetail | null>(null)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [popup, setPopup] = useState<Popup | null>(null)
   const [esOpen, setEsOpen] = useState(false)
   const [added, setAdded] = useState<string[]>([])
@@ -42,24 +53,45 @@ export default function ReaderPage() {
   const [explainIndex, setExplainIndex] = useState<number | null>(null)
   const [explanation, setExplanation] = useState<SentenceExplanation | null>(null)
   const [explaining, setExplaining] = useState(false)
+  const [explainError, setExplainError] = useState<string | null>(null)
+  /* The sentence is kept so the failed panel has something to try again with,
+     and `explainSince` so the wait shows its own clock: the local model can
+     take a minute over one sentence. */
+  const [explainSentence, setExplainSentence] = useState<string | null>(null)
+  const [explainSince, setExplainSince] = useState<number | null>(null)
+
+  async function runExplain(sentence: string) {
+    setExplanation(null)
+    setExplainError(null)
+    setExplainSince(Date.now())
+    setExplaining(true)
+    try {
+      setExplanation(await api.explain(sentence, Number(id)))
+    } catch (e) {
+      setExplanation(null)
+      setExplainError(
+        describeError(
+          e instanceof Error ? e.message : null,
+          'The coach could not explain this one. Trying again usually works.',
+        ),
+      )
+    } finally {
+      setExplaining(false)
+    }
+  }
 
   async function askExplain(index: number, sentence: string) {
     if (explainIndex === index) {
       setExplainIndex(null)
       setExplanation(null)
+      setExplainError(null)
+      setExplainSentence(null)
       return
     }
     setPopup(null)
     setExplainIndex(index)
-    setExplanation(null)
-    setExplaining(true)
-    try {
-      setExplanation(await api.explain(sentence, Number(id)))
-    } catch {
-      setExplanation(null)
-    } finally {
-      setExplaining(false)
-    }
+    setExplainSentence(sentence)
+    await runExplain(sentence)
   }
   const startRef = useRef(Date.now())
   const articleRef = useRef<HTMLDivElement>(null)
@@ -72,7 +104,14 @@ export default function ReaderPage() {
         setText(t)
         startRef.current = Date.now()
       })
-      .catch(() => setError(true))
+      .catch((e: unknown) =>
+        setError(
+          describeError(
+            e instanceof Error ? e.message : null,
+            'This reading could not be opened. Is the local server running?',
+          ),
+        ),
+      )
   }, [id])
 
   useEffect(() => {
@@ -166,11 +205,11 @@ export default function ReaderPage() {
       <Page width="study" bottom="pb-24">
         <ErrorLine
           onRetry={() => {
-            setError(false)
+            setError(null)
             load()
           }}
         >
-          This reading could not be opened.
+          {error}
         </ErrorLine>
         <ButtonLink to="/reading" variant="text" tone="cobalt" size="sm" className="mt-4">
           ← Back to the shelf
@@ -408,9 +447,15 @@ export default function ReaderPage() {
                   ✕
                 </button>
               </div>
-              {explaining && <Waiting>The coach is looking at it…</Waiting>}
+              {explaining && (
+                <Waiting since={explainSince}>The coach is looking at it…</Waiting>
+              )}
               {!explaining && !explanation && (
-                <ErrorLine>The coach could not explain this one — check the AI setup.</ErrorLine>
+                <ErrorLine
+                  onRetry={explainSentence ? () => void runExplain(explainSentence) : undefined}
+                >
+                  {explainError ?? 'The coach could not explain this one. Trying again usually works.'}
+                </ErrorLine>
               )}
               {explanation && (
                 <dl className="mt-2 space-y-2.5">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type NarrationMark } from './api'
 import { SpeakerIcon, mediaUrl } from './Audio'
-import { Button, ErrorLine } from './ui'
+import { Button, ErrorLine, Waiting, describeError } from './ui'
 
 const SPEEDS = [0.8, 1] as const
 
@@ -18,6 +18,9 @@ export default function ReadingPlayer({
   const [marks, setMarks] = useState<NarrationMark[] | null>(null)
   const [src, setSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  /* Reading a whole text aloud is a minute of synthesis on this laptop; the
+     button alone cannot say how long it has been at it. */
+  const [since, setSince] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
@@ -36,6 +39,7 @@ export default function ReadingPlayer({
 
   async function prepare() {
     setLoading(true)
+    setSince(Date.now())
     setError(null)
     try {
       const r = await api.narrate(textId)
@@ -55,8 +59,13 @@ export default function ReadingPlayer({
       audioRef.current = el
       void el.play()
       setPlaying(true)
-    } catch {
-      setError('The voice engine is unavailable. You can still read on your own.')
+    } catch (e) {
+      setError(
+        describeError(
+          e instanceof Error ? e.message : null,
+          'The voice engine is unavailable. You can still read on your own.',
+        ),
+      )
     } finally {
       setLoading(false)
     }
@@ -141,6 +150,10 @@ export default function ReadingPlayer({
           </>
         )}
       </div>
+
+      {loading && (
+        <Waiting since={since}>The coach is reading it through before it speaks…</Waiting>
+      )}
 
       {error && <ErrorLine onRetry={() => void prepare()}>{error}</ErrorLine>}
     </>

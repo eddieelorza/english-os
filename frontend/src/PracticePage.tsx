@@ -1,10 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from './api'
-import type { Activity, GrammarTip, Question } from './api'
+import type { Activity, GrammarTip, Job, Question } from './api'
 import { PlayButton } from './Audio'
 import History from './History'
-import { Button, Choice, Empty, ErrorLine, Page, PageHeader, RuledSkeleton, SLIDE, Section, fmt } from './ui'
+import {
+  Button,
+  Choice,
+  Empty,
+  ErrorLine,
+  Page,
+  PageHeader,
+  SLIDE,
+  Section,
+  Waiting,
+  describeError,
+  fmt,
+  queueNote,
+  useJobWatch,
+} from './ui'
+
+/* When the work actually started, for the stopwatch in `Waiting`. The server
+   writes local wall-clock ISO without a zone, which `Date.parse` reads as
+   local — which is what it is. */
+function jobSince(job: Job | null): number | null {
+  if (!job) return null
+  const t = Date.parse(job.started_at ?? job.created_at)
+  return Number.isFinite(t) ? t : null
+}
 
 const LETTERS = ['A', 'B', 'C']
 
@@ -17,32 +40,74 @@ export default function PracticePage() {
   const [acts, setActs] = useState<Activity[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tip, setTip] = useState<GrammarTip | null>(null)
+  /* When we asked. `/api/activities/today` can sit for 15–80 s while the local
+     model writes the set, and a wait with no clock reads as a hung screen. */
+  const [asked, setAsked] = useState(() => Date.now())
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError(null)
+    setAsked(Date.now())
     api
       .activitiesToday()
       .then((d) => setActs(d.activities))
-      .catch(() =>
-        setError('The coach could not prepare today’s practice. Check the AI setup.'),
+      .catch((e: unknown) =>
+        setError(
+          describeError(
+            e instanceof Error ? e.message : null,
+            'Today’s practice could not be opened. Is the local server running?',
+          ),
+        ),
       )
     api.coachTip().then((d) => setTip(d.tip)).catch(() => undefined)
   }, [])
 
-  const pending = acts?.filter((a) => !a.completed_at) ?? []
+  useEffect(() => {
+    load()
+  }, [load])
+
+  /* The set is usually queued by the end of a review session, not by this
+     screen: if that job is still in the worker, show its real wait instead of
+     an empty page. */
+  const { job, pending } = useJobWatch(['activities'], (done) => {
+    if (done.status === 'failed') {
+      setError(
+        describeError(
+          done.error,
+          'The coach could not finish today’s questions. Asking again usually works.',
+        ),
+      )
+      return
+    }
+    /* `activitiesToday` is also the way back in: the endpoint writes the set
+       itself when the worker has not, so "Try again" really does ask again. */
+    load()
+  })
+  const writing = job != null && (job.status === 'queued' || job.status === 'running')
+
+  const todo = acts?.filter((a) => !a.completed_at) ?? []
   const finished = acts?.filter((a) => a.completed_at) ?? []
+  const loading = !acts && !error
 
   return (
     <Page width="study">
       <PageHeader title="Practice" />
 
-      {error && <ErrorLine>{error}</ErrorLine>}
+      {error && <ErrorLine onRetry={load}>{error}</ErrorLine>}
 
-      {!acts && !error && <RuledSkeleton lines={4} />}
+      {writing && job && (
+        <Waiting since={jobSince(job)} note={queueNote(job, pending)}>
+          The coach is setting today’s questions…
+        </Waiting>
+      )}
 
-      {pending.length > 0 && <Drill key={pending[0].id} activities={pending} tip={tip} />}
+      {loading && !writing && (
+        <Waiting since={asked}>Opening today’s practice…</Waiting>
+      )}
+
+      {todo.length > 0 && <Drill key={todo[0].id} activities={todo} tip={tip} />}
 
       {/* Already answered today — the worksheet is the right shape for review */}
-      {pending.length === 0 && finished.length > 0 && (
+      {todo.length === 0 && finished.length > 0 && (
         <>
           <p className="font-book text-ink-soft mt-2 text-[15px]">
             Done for today. Here is what you answered.
@@ -54,7 +119,7 @@ export default function PracticePage() {
         </>
       )}
 
-      {acts && acts.length === 0 && !error && (
+      {acts && acts.length === 0 && !error && !writing && (
         <Empty>No practice today — study some words first and come back.</Empty>
       )}
 

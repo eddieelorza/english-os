@@ -53,7 +53,20 @@ export interface Summary {
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    /* FastAPI puts the real cause in `detail` ("AIUnavailable: Ollama is not
+       running…"). Throwing only "503 Service Unavailable" is why every screen
+       could say no more than "check the AI setup": the sentence that named
+       the problem was being discarded here. */
+    let detail = ''
+    try {
+      const body = (await res.json()) as { detail?: unknown }
+      if (typeof body?.detail === 'string') detail = body.detail
+    } catch {
+      /* not JSON, or already consumed — the status line still tells us something */
+    }
+    throw new Error(detail || `${res.status} ${res.statusText}`)
+  }
   return res.json() as Promise<T>
 }
 
@@ -685,7 +698,13 @@ export interface GenerateResult {
   model: string
 }
 
-export type JobKind = 'reading' | 'podcast' | 'activities' | 'tip'
+export type JobKind =
+  | 'reading'
+  | 'podcast'
+  | 'activities'
+  | 'tip'
+  | 'writing_task'
+  | 'shadow'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
 
 export interface Job {
@@ -700,6 +719,13 @@ export interface Job {
   finished_at: string | null
   /* How many jobs are queued or running, this one included. */
   pending?: number
+}
+
+/* What `session.end` queued — job ids, or the reason it could not ask. */
+export interface Material {
+  queued?: number[]
+  reading_skipped?: boolean
+  error?: string
 }
 
 export const api = {
@@ -801,11 +827,14 @@ export const api = {
       body: JSON.stringify(opts),
     }),
 
+  /* Closing the sitting is what queues the day's material (ADR-011), so the
+     answer carries it. The screen used to drop `material` on the floor: the
+     reading, the drill and the message were being written and nothing said
+     so. */
   sessionEnd: () =>
-    request<SessionProgress & { ended: boolean; backlog?: SpreadResult }>(
-      '/api/session/end',
-      { method: 'POST' },
-    ),
+    request<
+      SessionProgress & { ended: boolean; backlog?: SpreadResult; material?: Material }
+    >('/api/session/end', { method: 'POST' }),
 
   /* "Study more": brings the next scheduled cards forward to today. */
   pullForward: (cards = 20) =>

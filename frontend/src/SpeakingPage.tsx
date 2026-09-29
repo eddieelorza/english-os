@@ -2,7 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from './api'
 import type { SpeakingResult } from './api'
-import { Button, ErrorLine, Page, PageHeader, RuledSkeleton, SLIDE, Section, fmt } from './ui'
+import {
+  Button,
+  ErrorLine,
+  Page,
+  PageHeader,
+  RuledSkeleton,
+  SLIDE,
+  Section,
+  Waiting,
+  describeError,
+  fmt,
+  useJobWatch,
+} from './ui'
 import ConversationPanel from './ConversationPanel'
 
 type Phase = 'idle' | 'recording' | 'recorded' | 'sending' | 'done'
@@ -13,27 +25,46 @@ export default function SpeakingPage() {
   const [mode, setMode] = useState<'conversation' | 'monologue'>('conversation')
   const [prompt, setPrompt] = useState<string | null>(null)
   const [promptWords, setPromptWords] = useState<string[]>([])
-  const [promptError, setPromptError] = useState(false)
+  const [promptError, setPromptError] = useState<string | null>(null)
+  const [promptSince, setPromptSince] = useState<number | null>(null)
+  const [sendSince, setSendSince] = useState<number | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
   const [seconds, setSeconds] = useState(0)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [result, setResult] = useState<SpeakingResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [micError, setMicError] = useState<string | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const blobRef = useRef<Blob | null>(null)
   const timerRef = useRef<number | undefined>(undefined)
 
+  /* Speaking does not queue its own work, but it shares the one model with
+     whatever the queue is chewing on — the day's writing task above all. When
+     that is in flight, say so instead of letting a 60 s wait look like a hang. */
+  const { job: taskJob, pending: taskPending } = useJobWatch(['writing_task'])
+  const busy = taskJob?.status === 'queued' || taskJob?.status === 'running'
+  const busyNote = busy
+    ? taskPending > 1
+      ? `The coach is busy with today's material — ${taskPending} things queued. One at a time keeps the laptop cool.`
+      : "The coach is busy writing today's material, so this is slower than usual."
+    : undefined
+
   function loadPrompt() {
     setPrompt(null)
-    setPromptError(false)
+    setPromptError(null)
+    setPromptSince(Date.now())
     api
       .speakingPrompt()
       .then((p) => {
         setPrompt(p.prompt)
         setPromptWords(p.learning_words)
+        setPromptSince(null)
       })
-      .catch(() => setPromptError(true))
+      .catch((e: unknown) => {
+        setPromptSince(null)
+        setPromptError(e instanceof Error ? e.message : String(e))
+      })
   }
 
   useEffect(() => {
@@ -43,6 +74,7 @@ export default function SpeakingPage() {
 
   async function startRecording() {
     setError(null)
+    setMicError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const rec = new MediaRecorder(stream)
@@ -60,8 +92,8 @@ export default function SpeakingPage() {
       setSeconds(0)
       setPhase('recording')
       timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000)
-    } catch {
-      setError('The microphone could not be opened — check the browser permission.')
+    } catch (e: unknown) {
+      setMicError(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -74,13 +106,16 @@ export default function SpeakingPage() {
     if (!blobRef.current) return
     setPhase('sending')
     setError(null)
+    setSendSince(Date.now())
     try {
       const r = await api.speakingSubmit(blobRef.current, prompt ?? '')
       setResult(r)
       setPhase('done')
-    } catch {
-      setError('The coach could not process the recording. Try again.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
       setPhase('recorded')
+    } finally {
+      setSendSince(null)
     }
   }
 
@@ -131,9 +166,9 @@ export default function SpeakingPage() {
           )
         }
       >
-        {promptError ? (
+        {promptError !== null ? (
           <ErrorLine onRetry={loadPrompt}>
-            The coach is unavailable — check the AI setup in Reading.
+            {describeError(promptError, 'The coach could not think of a question to ask you.')}
           </ErrorLine>
         ) : prompt ? (
           <>
@@ -151,7 +186,12 @@ export default function SpeakingPage() {
             )}
           </>
         ) : (
-          <RuledSkeleton lines={2} />
+          <>
+            <Waiting since={promptSince} note={busyNote}>
+              The coach is thinking of a question…
+            </Waiting>
+            <RuledSkeleton lines={2} />
+          </>
         )}
       </Section>
 
@@ -161,6 +201,15 @@ export default function SpeakingPage() {
           <Button onClick={startRecording} disabled={!prompt}>
             Start speaking
           </Button>
+        )}
+
+        {micError !== null && (
+          <ErrorLine onRetry={startRecording} retryLabel="Try the microphone again">
+            {describeError(
+              micError,
+              'The microphone could not be opened — check the browser permission.',
+            )}
+          </ErrorLine>
         )}
 
         {phase === 'recording' && (
@@ -189,7 +238,17 @@ export default function SpeakingPage() {
           </div>
         )}
 
-        {error && <ErrorLine>{error}</ErrorLine>}
+        {phase === 'sending' && (
+          <Waiting since={sendSince} note={busyNote}>
+            The coach is listening to your answer…
+          </Waiting>
+        )}
+
+        {error !== null && phase !== 'sending' && (
+          <ErrorLine onRetry={send}>
+            {describeError(error, 'The coach could not process the recording.')}
+          </ErrorLine>
+        )}
       </Section>
 
       {/* The correction */}

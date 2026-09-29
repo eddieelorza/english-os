@@ -1,10 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, runJob } from './api'
-import type { Episode, PodcastSummary } from './api'
-import { Button, ErrorLine, Page, PageHeader, Section, Waiting, fmt, RowsSkeleton, peekCache, primeCache } from './ui'
+import { api } from './api'
+import type { Episode, Job, PodcastSummary } from './api'
+import {
+  Button,
+  ErrorLine,
+  Page,
+  PageHeader,
+  Section,
+  Waiting,
+  describeError,
+  fmt,
+  queueNote,
+  useJobWatch,
+  RowsSkeleton,
+  peekCache,
+  primeCache,
+} from './ui'
 import { SpeakerIcon, mediaUrl } from './Audio'
 import { dayLabel } from './ReadingPage'
 import ComprehensionQuiz from './ComprehensionQuiz'
+
+/* When the work actually started, for the stopwatch in `Waiting`. The server
+   writes local wall-clock ISO without a zone, which `Date.parse` reads as
+   local — which is what it is. */
+function jobSince(job: Job | null): number | null {
+  if (!job) return null
+  const t = Date.parse(job.started_at ?? job.created_at)
+  return Number.isFinite(t) ? t : null
+}
 
 const LENGTHS = [3, 5, 8]
 const TOPICS = ['Tech', 'Work', 'AI', 'Fintech', 'Daily Life', 'Random']
@@ -21,9 +44,12 @@ export default function PodcastPage() {
   const [mode, setMode] = useState<Mode>('shadow')
   const [minutes, setMinutes] = useState(5)
   const [topic, setTopic] = useState('Random')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [stage, setStage] = useState<string | null>(null)
+  /* The episode this visit ordered: a recording queued elsewhere (another tab,
+     or the end of a session) is shown while it runs, but it does not take over
+     the screen when it lands. */
+  const asked = useRef<number | null>(null)
+  const [lastOpened, setLastOpened] = useState<number | null>(null)
 
   function load() {
     api
@@ -36,34 +62,54 @@ export default function PodcastPage() {
   }
   useEffect(load, [])
 
+  /* Recording is the longest wait in the app — a script, then a voice per host.
+     The watch re-attaches to it on mount, so leaving the page no longer looks
+     like cancelling it. */
+  const { job, pending, follow, clear } = useJobWatch(['podcast'], (done) => {
+    load()
+    const id = done.result && (done.result as { text_id?: number }).text_id
+    if (done.status === 'failed' || !id) {
+      setError(
+        describeError(
+          done.error,
+          'The studio could not record an episode. Try again in a moment.',
+        ),
+      )
+      clear()
+      return
+    }
+    if (asked.current === done.id) void open(id)
+    else clear()
+  })
+  const busy = job != null && (job.status === 'queued' || job.status === 'running')
+
   async function generate() {
     if (busy) return
-    setBusy(true)
     setError(null)
-    setStage('Queued')
+    setLastOpened(null)
     try {
-      const job = await runJob('podcast', { minutes, topic }, (j) => {
-        const ahead = (j.pending ?? 1) - 1
-        setStage(j.status === 'running' ? 'Recording' : ahead > 0 ? `Waiting · ${ahead}` : 'Queued')
-      })
-      const id = job.result && (job.result as { text_id?: number }).text_id
-      if (job.status === 'failed' || !id) throw new Error(job.error ?? 'no episode')
-      setEpisode(await api.podcast(id))
-      load()
-    } catch {
-      setError('The studio could not record an episode. Check the AI and voice setup.')
-    } finally {
-      setBusy(false)
-      setStage(null)
+      const j = await api.enqueue('podcast', { minutes, topic })
+      asked.current = j.id
+      follow(j)
+    } catch (e) {
+      setError(
+        describeError(
+          e instanceof Error ? e.message : null,
+          'The recording could not be ordered. Is the local server running?',
+        ),
+      )
     }
   }
 
   async function open(id: number) {
     setError(null)
+    setLastOpened(id)
     try {
       setEpisode(await api.podcast(id))
-    } catch {
-      setError('That episode could not be opened.')
+    } catch (e) {
+      setError(
+        describeError(e instanceof Error ? e.message : null, 'That episode could not be opened.'),
+      )
     }
   }
 
@@ -114,17 +160,19 @@ export default function PodcastPage() {
             <SpeakerIcon size={13} />
             {busy ? 'Recording…' : 'Record'}
           </Button>
-          {busy && (
-            <Waiting>
-              {stage === 'Recording'
-                ? 'Writing the conversation, then giving each host a voice — a few minutes.'
-                : stage?.startsWith('Waiting')
-                  ? `In line behind ${stage.split('· ')[1]} job(s) — the studio records one at a time.`
-                  : 'Queued — starting shortly.'}
+          {busy && job && (
+            <Waiting since={jobSince(job)} note={queueNote(job, pending)}>
+              {job.status === 'running'
+                ? 'Writing the conversation, then giving each host a voice — a few minutes. You can leave this page; the studio keeps recording.'
+                : 'Queued — starting shortly.'}
             </Waiting>
           )}
         </div>
-        {error && <ErrorLine>{error}</ErrorLine>}
+        {error && (
+          <ErrorLine onRetry={() => void (lastOpened != null ? open(lastOpened) : generate())}>
+            {error}
+          </ErrorLine>
+        )}
       </Section>
 
       {/* The list painted nothing while it loaded, then popped in. */}

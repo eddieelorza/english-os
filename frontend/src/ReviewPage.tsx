@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from './api'
 import type {
+  Job,
+  Material,
   Projection,
   RatingName,
   RatingOutcome,
@@ -23,6 +26,7 @@ import {
   RowsSkeleton,
   RuledSkeleton,
   SLIDE,
+  describeError,
   fmt,
 } from './ui'
 
@@ -34,6 +38,7 @@ const MINUTES = [10, 20, 30]
    so the header can talk about *this sitting* instead of showing a backlog
    number that only makes you feel behind (ADR-009). */
 export default function ReviewPage() {
+  const navigate = useNavigate()
   const [queue, setQueue] = useState<ReviewQueue | null>(null)
   const [session, setSession] = useState<SessionProgress | null>(null)
   const [card, setCard] = useState<ReviewCard | null>(null)
@@ -135,8 +140,13 @@ export default function ReviewPage() {
           active &&
           session && (
             <>
+              {/* Answers can pass the plan: a learning card comes back inside
+                  the same sitting, so "106 of 82" used to appear and read as a
+                  bug. Past the plan, the plan stops being the yardstick. */}
               <p className="tnum">
-                {fmt(session.done ?? 0)} of {fmt(session.planned ?? 0)} this sitting
+                {(session.done ?? 0) > (session.planned ?? 0)
+                  ? `${fmt(session.done ?? 0)} answered this sitting`
+                  : `${fmt(session.done ?? 0)} of ${fmt(session.planned ?? 0)} this sitting`}
               </p>
               {/* The three groups, named. "N left" hides that a learning card
                   comes back in this sitting while a review vanishes for days. */}
@@ -276,10 +286,11 @@ export default function ReviewPage() {
                 setStopped(false)
                 load()
               }}
-              onClose={() => {
-                setSession(null)
-                load()
-              }}
+              /* Closing lands on Today, not back on the planning screen. The
+                 sitting is over and the day's material is being written;
+                 offering "how long do you have?" again reads as if nothing
+                 had happened. */
+              onClose={() => navigate('/')}
             />
           )}
         </AnimatePresence>
@@ -646,6 +657,14 @@ function Cooling({
         their own — answering one seconds after you just saw it does not prove you know it,
         it only teaches the scheduler that you do not.
       </p>
+
+      {/* A countdown with no way out is a locked door. The reading is the one
+          thing worth doing in the two minutes the ladder needs. */}
+      <div className="mt-6">
+        <ButtonLink to="/reading" variant="text" tone="cobalt">
+          Read while you wait →
+        </ButtonLink>
+      </div>
     </motion.div>
   )
 }
@@ -682,11 +701,19 @@ function Finished({
       .finally(() => setPulling(false))
   }
   const [spread, setSpread] = useState<SpreadResult | null>(null)
+  const [material, setMaterial] = useState<Material | null>(null)
 
-  /* Closing the sitting is what tidies the backlog, so it happens when the
-     card appears — not when you click away, where you would never see it. */
+  /* Closing the sitting is what tidies the backlog AND queues the day's
+     material (ADR-011), so it happens when the card appears — not when you
+     click away, where you would never see it. */
   useEffect(() => {
-    api.sessionEnd().then((r) => setSpread(r.backlog ?? null)).catch(() => undefined)
+    api
+      .sessionEnd()
+      .then((r) => {
+        setSpread(r.backlog ?? null)
+        setMaterial(r.material ?? null)
+      })
+      .catch(() => undefined)
   }, [])
 
   const left = spread?.spread ? (spread.kept_today ?? 0) : dueLeft
@@ -738,6 +765,8 @@ function Finished({
         )
       )}
 
+      <TodaysMaterial material={material} />
+
       <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
         <Button variant="secondary" onClick={onClose}>
           Close the sitting
@@ -761,6 +790,100 @@ function Finished({
         </p>
       )}
     </motion.div>
+  )
+}
+
+
+/* The real reward of finishing a sitting is invisible without this: closing it
+   queues the day's reading, drill, message and tip, and until M23 the screen
+   dropped that answer on the floor. Four jobs could fail in silence and the
+   next screen would just say "check the AI setup". */
+function TodaysMaterial({ material }: { material: Material | null }) {
+  const ids = material?.queued ?? []
+  const idsKey = ids.join(',')
+  const [jobs, setJobs] = useState<Job[] | null>(null)
+  const [retried, setRetried] = useState(false)
+
+  useEffect(() => {
+    if (!idsKey) return
+    let live = true
+    let timer: ReturnType<typeof setTimeout>
+    const key = new Set(idsKey.split(',').map(Number))
+    async function tick() {
+      try {
+        const r = await api.jobs()
+        if (!live) return
+        const mine = r.jobs.filter((j) => key.has(j.id))
+        setJobs(mine)
+        if (mine.some((j) => j.status === 'queued' || j.status === 'running'))
+          timer = setTimeout(tick, 2000)
+      } catch {
+        /* The page's own error path owns a dead server. */
+      }
+    }
+    tick()
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [idsKey])
+
+  /* `session.end` itself could not ask — worth saying plainly. */
+  if (material?.error)
+    return (
+      <p className="font-book text-correction mx-auto mt-6 max-w-[46ch] text-[13px] italic">
+        Today's material could not be requested. It will be waiting on the shelf once the
+        coach is back.
+      </p>
+    )
+
+  if (ids.length === 0) return null
+
+  const failed = jobs?.filter((j) => j.status === 'failed') ?? []
+  const working = jobs?.filter((j) => j.status === 'queued' || j.status === 'running') ?? []
+
+  if (failed.length > 0 && working.length === 0)
+    return (
+      <div className="mx-auto mt-6 max-w-[46ch]">
+        <p className="font-book text-correction text-[13px] italic">
+          {describeError(
+            failed[0].error,
+            'The coach could not write today\u2019s material.',
+          )}
+        </p>
+        {!retried && (
+          <Button
+            variant="text"
+            tone="cobalt"
+            className="mt-2"
+            onClick={() => {
+              setRetried(true)
+              failed.forEach((j) => api.enqueue(j.kind, j.params).catch(() => undefined))
+            }}
+          >
+            Ask again
+          </Button>
+        )}
+        {retried && <p className="text-ghost mt-2 text-[11px]">Asked again.</p>}
+      </div>
+    )
+
+  if (working.length > 0 || jobs === null)
+    return (
+      <p
+        role="status"
+        aria-live="polite"
+        className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-[13px] italic"
+      >
+        Your reading, drill and message are being written — one at a time, so the laptop
+        stays cool. You can close this and they will be waiting.
+      </p>
+    )
+
+  return (
+    <p className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-[13px] italic">
+      Today\u2019s reading, drill and message are ready.
+    </p>
   )
 }
 
