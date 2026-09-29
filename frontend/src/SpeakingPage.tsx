@@ -16,6 +16,7 @@ import {
   useJobWatch,
 } from './ui'
 import ConversationPanel from './ConversationPanel'
+import ChatGPTPrompt from './ChatGPTPrompt'
 
 type Phase = 'idle' | 'recording' | 'recorded' | 'sending' | 'done'
 
@@ -130,6 +131,7 @@ export default function SpeakingPage() {
   return (
     <Page width="study">
       <PageHeader title="Speaking" />
+      <ChatGPTPrompt mode="speaking" />
 
       {/* Dos ejercicios distintos, una sola pestaña: la barra de navegación ya
           se desborda a 800 px y una décima entrada la rompía. Conversación

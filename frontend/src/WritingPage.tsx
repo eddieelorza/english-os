@@ -5,6 +5,7 @@ import type { GrammarTip, GuidedResult, Job, WritingResult } from './api'
 import { TipCard } from './PracticePage'
 import GuidedWriting from './GuidedWriting'
 import History from './History'
+import ChatGPTPrompt from './ChatGPTPrompt'
 import {
   Button,
   ErrorLine,
@@ -138,6 +139,7 @@ export default function WritingPage() {
             </Button>
           }
         />
+        <ChatGPTPrompt mode="writing" />
         {/* El drill se va cuando termina: dejarlo debajo del resumen invita a
             contestar una quinta oración que ya no cuenta para nada. */}
         {guided ? (
@@ -183,6 +185,7 @@ export default function WritingPage() {
           )
         }
       />
+      <ChatGPTPrompt mode="writing" />
 
       {/* The task */}
       <Section
