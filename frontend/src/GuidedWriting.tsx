@@ -184,13 +184,13 @@ export default function GuidedWriting({
     <section className="mt-8">
       {/* The message he is replying to — the reason to write at all */}
       <div className="border-cobalt/30 bg-cobalt-wash/40 border-l-2 py-4 pl-4">
-        <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+        <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
           From {task.from_name}
         </p>
-        <p className="font-book mt-2 max-w-[62ch] text-[16px] leading-relaxed">
+        <p className="font-book mt-2 max-w-[62ch] text-base leading-relaxed">
           {task.message}
         </p>
-        <p lang="es" className="font-book text-ghost mt-2 text-[13px] italic">
+        <p lang="es" className="font-book text-ghost mt-2 text-sm italic">
           {task.scenario}
         </p>
       </div>
@@ -225,14 +225,14 @@ export default function GuidedWriting({
         >
           {!atEnd && (
             <>
-              <p className="tnum text-ghost text-[11px]">
+              <p className="tnum text-ghost text-xs">
                 Sentence {fmt(i + 1)} of {fmt(task.steps.length)}
               </p>
-              <p lang="es" className="font-book mt-1 max-w-[58ch] text-[17px] font-semibold">
+              <p lang="es" className="font-book mt-1 max-w-[58ch] text-lg font-semibold">
                 {step?.ask}
               </p>
               {step?.word && (
-                <p className="text-ghost mt-1 text-[12px]">
+                <p className="text-ghost mt-1 text-xs">
                   usa <span className="text-cobalt-deep font-semibold">{step.word}</span>
                 </p>
               )}
@@ -252,7 +252,7 @@ export default function GuidedWriting({
                     else void checkIt()
                   }
                 }}
-                className="font-book border-rule focus:border-cobalt mt-4 w-full border-b bg-transparent pb-2 text-[19px] outline-none disabled:opacity-70"
+                className="font-book border-rule focus:border-cobalt mt-4 w-full border-b bg-transparent pb-2 text-lg outline-none disabled:opacity-70"
               />
 
               {checking && (
@@ -274,7 +274,7 @@ export default function GuidedWriting({
                     }`}
                   >
                     <p
-                      className={`text-[10px] font-semibold tracking-[0.2em] uppercase ${
+                      className={`text-xs font-semibold tracking-label uppercase ${
                         !feedback.checked
                           ? 'text-ghost'
                           : feedback.ok
@@ -289,12 +289,12 @@ export default function GuidedWriting({
                           : 'Almost'}
                     </p>
                     {feedback.checked && !feedback.ok && (
-                      <p className="font-book text-cobalt-deep mt-1 text-[16px]">
+                      <p className="font-book text-cobalt-deep mt-1 text-base">
                         {feedback.fixed}
                       </p>
                     )}
                     {feedback.note && (
-                      <p lang="es" className="font-book text-ink-soft mt-1 max-w-[58ch] text-[14px] italic">
+                      <p lang="es" className="font-book text-ink-soft mt-1 max-w-[58ch] text-sm italic">
                         {feedback.note}
                       </p>
                     )}
@@ -325,7 +325,7 @@ export default function GuidedWriting({
                         : 'Finish'
                       : 'Check'}
                 </Button>
-                <span className="text-ghost text-[11px]">press Enter</span>
+                <span className="text-ghost text-xs">press Enter</span>
               </div>
             </>
           )}
@@ -350,10 +350,10 @@ export default function GuidedWriting({
       {/* What he has written so far, growing into a paragraph */}
       {done.length > 0 && (
         <div className="border-rule mt-6 border-t pt-4">
-          <p className="text-ghost text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <p className="text-ghost text-xs font-semibold tracking-label uppercase">
             Your reply so far
           </p>
-          <p className="font-book text-ink-soft mt-2 max-w-[62ch] text-[15px] leading-relaxed">
+          <p className="font-book text-ink-soft mt-2 max-w-[62ch] text-base leading-relaxed">
             {done.map((s) => (s.checked && s.fixed) || s.text).join(' ')}
           </p>
         </div>

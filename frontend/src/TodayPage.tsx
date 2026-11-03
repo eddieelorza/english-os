@@ -103,7 +103,7 @@ export default function TodayPage() {
       {/* Paused: the day becomes a held page, not a list of debts */}
       {today?.pause.paused && (
         <section className="border-cobalt/30 bg-cobalt-wash/50 mt-8 border-l-2 py-5 pl-5">
-          <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
             Course on hold
           </p>
           <p className="font-book mt-2 text-xl leading-snug font-semibold">
@@ -113,7 +113,7 @@ export default function TodayPage() {
               <span className="text-ink-soft font-normal"> {today.pause.reason}.</span>
             )}
           </p>
-          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-[15px]">
+          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-base">
             Nothing is piling up: no cards are falling due, no new words are being
             introduced, and <strong className="font-semibold">your streak is safe</strong>.
             When you come back, the backlog is spread over a few days instead of
@@ -123,7 +123,7 @@ export default function TodayPage() {
             {busy ? 'Bringing it back…' : 'Resume the course'}
           </Button>
           {resumed && (
-            <p className="font-book text-cobalt-deep mt-3 text-[14px]">
+            <p className="font-book text-cobalt-deep mt-3 text-sm">
               Welcome back. {fmt(resumed.cards_spread ?? 0)} cards spread over{' '}
               {fmt(resumed.ramp_days ?? 1)} day{(resumed.ramp_days ?? 1) === 1 ? '' : 's'}
               {resumed.anki?.reachable
@@ -265,7 +265,7 @@ export default function TodayPage() {
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Travelling, busy week… (optional)"
                       autoFocus
-                      className="border-rule-strong focus:border-cobalt placeholder:text-ghost w-full border-b bg-transparent pb-1 text-[14px] outline-none"
+                      className="border-rule-strong focus:border-cobalt placeholder:text-ghost w-full border-b bg-transparent pb-1 text-sm outline-none"
                     />
                   </label>
                   <Button size="sm" onClick={pauseNow} disabled={busy}>
@@ -281,7 +281,7 @@ export default function TodayPage() {
 
           {/* Last session note */}
           {today.last_session && (
-            <p className="tnum text-ghost mt-6 text-[12px]">
+            <p className="tnum text-ghost mt-6 text-xs">
               Last session: {today.last_session.date} ·{' '}
               {fmt(today.last_session.cards_reviewed)} cards
               {today.last_session.again_rate != null &&
@@ -309,10 +309,10 @@ function Row({
 }) {
   return (
     <section className="border-rule flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b py-5">
-      <span className="tnum text-ghost w-6 shrink-0 text-right text-[13px]">{n}</span>
+      <span className="tnum text-ghost w-6 shrink-0 text-right text-sm">{n}</span>
       <div className="min-w-0 flex-1">
-        <h3 className="text-[15px] font-bold tracking-tight">{title}</h3>
-        <p className="font-book text-ink-soft mt-1 text-[15px] leading-relaxed">{children}</p>
+        <h3 className="text-base font-bold tracking-tight">{title}</h3>
+        <p className="font-book text-ink-soft mt-1 text-base leading-relaxed">{children}</p>
       </div>
       {to && cta && (
         <ButtonLink to={to} variant="text" tone="cobalt" className="shrink-0">

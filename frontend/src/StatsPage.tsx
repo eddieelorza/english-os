@@ -36,7 +36,7 @@ export default function StatsPage() {
         title="Stats"
         meta={
           stats && (
-            <span className="font-book text-[14px]">
+            <span className="font-book text-sm">
               Working level{' '}
               <span className="text-cobalt-deep font-semibold">{stats.recommendation.level}</span>
             </span>
@@ -61,12 +61,12 @@ export default function StatsPage() {
               each with its sample. A gap here is stated, never guessed. */}
           <section className="mt-10">
             <div className="flex flex-wrap items-baseline justify-between gap-x-6">
-              <h3 className="text-[13px] font-bold tracking-tight">
+              <h3 className="text-sm font-bold tracking-tight">
                 What your level is read from
               </h3>
-              <p className="text-ghost text-[11px]">last {stats.evidence.window_days} days</p>
+              <p className="text-ghost text-xs">last {stats.evidence.window_days} days</p>
             </div>
-            <p className="font-book text-ink-soft mt-1 max-w-[68ch] text-[14px]">
+            <p className="font-book text-ink-soft mt-1 max-w-[68ch] text-sm">
               {stats.recommendation.reason}.
             </p>
             <dl className="border-rule mt-3 border-t">
@@ -76,19 +76,19 @@ export default function StatsPage() {
                   return (
                     <div
                       key={key}
-                      className="border-rule flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b py-2.5"
+                      className="border-rule grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 border-b py-2.5 sm:flex"
                     >
-                      <dt className="text-ghost w-36 shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                      <dt className="text-ghost order-first text-xs font-semibold tracking-label uppercase sm:order-none sm:w-36 sm:shrink-0">
                         {e.label}
                       </dt>
-                      <dd className="font-book text-ink min-w-0 flex-1 text-[14px]">
+                      <dd className="font-book text-ink min-w-0 flex-1 text-sm">
                         {e.display ?? <span className="text-ghost">no data yet</span>}
                       </dd>
-                      <dd className="tnum text-ghost shrink-0 text-[11px]">
+                      <dd className="tnum text-ghost shrink-0 text-xs">
                         {fmt(e.n)} {e.unit}
                       </dd>
                       <dd
-                        className={`shrink-0 text-[10px] font-semibold tracking-[0.14em] uppercase ${
+                        className={`order-first shrink-0 text-xs font-semibold tracking-label uppercase sm:order-none ${
                           e.signal === 'stretch'
                             ? 'text-cobalt-deep'
                             : e.signal === 'consolidate'
@@ -109,7 +109,7 @@ export default function StatsPage() {
                 },
               )}
             </dl>
-            <p className="font-book text-ghost mt-2 text-[13px] italic">
+            <p className="font-book text-ghost mt-2 text-sm italic">
               A day without writing is not a blind day: recall, comprehension and
               practice count too.
             </p>
@@ -147,12 +147,12 @@ export default function StatsPage() {
               evidence table uses, each carrying its own sample. */}
           <section className="mt-10">
             <div className="flex flex-wrap items-baseline justify-between gap-x-6">
-              <h3 className="text-[13px] font-bold tracking-tight">
+              <h3 className="text-sm font-bold tracking-tight">
                 What answering late costs you
               </h3>
-              <p className="text-ghost text-[11px]">in-app reviews · last 90 days</p>
+              <p className="text-ghost text-xs">in-app reviews · last 90 days</p>
             </div>
-            <p className="font-book text-ink-soft mt-1 max-w-[68ch] text-[14px]">
+            <p className="font-book text-ink-soft mt-1 max-w-[68ch] text-sm">
               Spreading a backlog delays reviews, and a delayed card is recalled worse.
               This is that price, measured on your own cards rather than assumed.{' '}
               {stats.lateness.spreads.times === 0
@@ -167,12 +167,12 @@ export default function StatsPage() {
               {stats.lateness.by_bucket.map((b) => (
                 <div
                   key={b.label}
-                  className="border-rule flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b py-2.5"
+                  className="border-rule grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 border-b py-2.5 sm:flex"
                 >
-                  <dt className="text-ghost w-36 shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                  <dt className="text-ghost col-span-2 text-xs font-semibold tracking-label uppercase sm:w-36 sm:shrink-0">
                     {b.label}
                   </dt>
-                  <dd className="font-book text-ink min-w-0 flex-1 text-[14px]">
+                  <dd className="font-book text-ink min-w-0 flex-1 text-sm">
                     {b.recall != null ? (
                       `${Math.round(b.recall * 100)}% recalled`
                     ) : (
@@ -181,13 +181,13 @@ export default function StatsPage() {
                       </span>
                     )}
                   </dd>
-                  <dd className="tnum text-ghost shrink-0 text-[11px]">
+                  <dd className="tnum text-ghost shrink-0 text-xs">
                     {fmt(b.reviews)} review{b.reviews === 1 ? '' : 's'}
                   </dd>
                 </div>
               ))}
             </dl>
-            <p className="font-book text-ghost mt-2 text-[13px] italic">
+            <p className="font-book text-ghost mt-2 text-sm italic">
               {stats.lateness.summary.enough && stats.lateness.summary.avg_days_late != null
                 ? `On average you answer ${stats.lateness.summary.avg_days_late} days after a card
                    falls due; the worst was ${stats.lateness.summary.worst_days_late}.`
@@ -223,7 +223,7 @@ export default function StatsPage() {
             />
           </Chart>
 
-          <p className="font-book text-ghost mt-8 text-[13px] italic">
+          <p className="font-book text-ghost mt-8 text-sm italic">
             {stats.errors_14d.enough_data && stats.errors_14d.errors_per_100 != null
               ? `Writing accuracy: ${stats.errors_14d.errors_per_100} errors per 100 words over the last two weeks.`
               : 'Writing accuracy: not enough production data in the last two weeks to state a number.'}
@@ -237,8 +237,8 @@ export default function StatsPage() {
 function Fact({ k, v }: { k: string; v: string }) {
   return (
     <div className="border-rule border-b py-4 pr-4">
-      <dt className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">{k}</dt>
-      <dd className="text-ink mt-1 text-2xl font-extrabold tracking-tight">{v}</dd>
+      <dt className="text-ghost text-xs font-semibold tracking-label uppercase">{k}</dt>
+      <dd className="text-ink mt-1 text-xl font-semibold tracking-tight">{v}</dd>
     </div>
   )
 }
@@ -247,8 +247,8 @@ function Chart({ title, sub, children }: { title: string; sub: string; children:
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6">
-        <h3 className="text-[13px] font-bold tracking-tight">{title}</h3>
-        <p className="text-ghost text-[11px]">{sub}</p>
+        <h3 className="text-sm font-bold tracking-tight">{title}</h3>
+        <p className="text-ghost text-xs">{sub}</p>
       </div>
       <div className="mt-3">{children}</div>
     </section>
@@ -273,7 +273,7 @@ function Tip({ tip }: { tip: { x: number; text: string } | null }) {
   if (!tip) return null
   return (
     <div
-      className="border-rule-strong text-ink pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-sm border bg-white px-2 py-1 text-[11px] font-semibold whitespace-nowrap shadow-[0_2px_8px_rgba(22,24,28,0.10)]"
+      className="border-rule-strong text-ink pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-sm border bg-surface px-2 py-1 text-xs font-semibold whitespace-nowrap shadow-tip"
       style={{ left: `${(tip.x / W) * 100}%` }}
     >
       {tip.text}
@@ -305,7 +305,7 @@ function Columns({ data, format = (v: number) => fmt(v) }: { data: Point[]; form
         {yTicks(max).map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke="var(--color-rule)" strokeWidth="1" />
-            <text x={PAD.left - 6} y={y(t) + 3} textAnchor="end" fontSize="9" fill="var(--color-ghost)" className="tnum">
+            <text x={PAD.left - 6} y={y(t) + 3} textAnchor="end" fontSize="12" fill="var(--color-ghost)" className="tnum">
               {t}
             </text>
           </g>
@@ -338,8 +338,8 @@ function Columns({ data, format = (v: number) => fmt(v) }: { data: Point[]; form
           )
         })}
         <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} stroke="var(--color-rule-strong)" strokeWidth="1" />
-        <text x={PAD.left} y={H - 4} fontSize="9" fill="var(--color-ghost)">{data[0]?.label}</text>
-        <text x={W - PAD.right} y={H - 4} textAnchor="end" fontSize="9" fill="var(--color-ghost)">
+        <text x={PAD.left} y={H - 4} fontSize="12" fill="var(--color-ghost)">{data[0]?.label}</text>
+        <text x={W - PAD.right} y={H - 4} textAnchor="end" fontSize="12" fill="var(--color-ghost)">
           {data[data.length - 1]?.label}
         </text>
       </svg>
@@ -386,7 +386,7 @@ function TrendLine({
         {yTicks(max, min).map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke="var(--color-rule)" strokeWidth="1" />
-            <text x={PAD.left - 6} y={y(t) + 3} textAnchor="end" fontSize="9" fill="var(--color-ghost)" className="tnum">
+            <text x={PAD.left - 6} y={y(t) + 3} textAnchor="end" fontSize="12" fill="var(--color-ghost)" className="tnum">
               {format(t)}
             </text>
           </g>
@@ -415,8 +415,8 @@ function TrendLine({
             </g>
           ),
         )}
-        <text x={PAD.left} y={H - 4} fontSize="9" fill="var(--color-ghost)">{data[0]?.label}</text>
-        <text x={W - PAD.right} y={H - 4} textAnchor="end" fontSize="9" fill="var(--color-ghost)">
+        <text x={PAD.left} y={H - 4} fontSize="12" fill="var(--color-ghost)">{data[0]?.label}</text>
+        <text x={W - PAD.right} y={H - 4} textAnchor="end" fontSize="12" fill="var(--color-ghost)">
           {data[data.length - 1]?.label}
         </text>
       </svg>

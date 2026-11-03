@@ -48,10 +48,10 @@ export default function History({
         className="flex w-full items-baseline justify-between gap-4"
         aria-expanded={open}
       >
-        <span className="text-[12px] font-semibold tracking-[0.18em] uppercase">
+        <span className="text-xs font-semibold tracking-label uppercase">
           Everything you've made
         </span>
-        <span className="tnum text-ghost text-[12px]">
+        <span className="tnum text-ghost text-xs">
           {total > 0 ? `${fmt(total)} · ${open ? 'hide' : 'show'}` : emptyLabel}
         </span>
       </button>
@@ -60,7 +60,7 @@ export default function History({
         <div className="mt-5">
           {days.map((day) => (
             <div key={day.date} className="mb-6">
-              <h4 className="border-rule-strong text-ghost border-b pb-1 text-[10px] font-semibold tracking-[0.2em] uppercase">
+              <h4 className="border-rule-strong text-ghost border-b pb-1 text-xs font-semibold tracking-label uppercase">
                 {dayLabel(day.date)}
               </h4>
               <ul>
@@ -69,10 +69,10 @@ export default function History({
                     key={item.id}
                     className="border-rule group flex items-baseline gap-4 border-b py-2.5 pr-1"
                   >
-                    <span className="font-book min-w-0 flex-1 truncate text-[14px]">
+                    <span className="font-book min-w-0 flex-1 truncate text-sm">
                       {item.title}
                     </span>
-                    <span className="tnum text-ghost shrink-0 text-[11px]">
+                    <span className="tnum text-ghost shrink-0 text-xs">
                       {'score' in item && item.score != null
                         ? `${fmt(item.score)}/${fmt(item.total ?? 0)}`
                         : 'words_produced' in item && item.words_produced != null
@@ -82,7 +82,7 @@ export default function History({
                     <button
                       onClick={() => remove(item.id)}
                       aria-label="Delete"
-                      className={`shrink-0 text-[10px] font-semibold tracking-[0.14em] uppercase transition-opacity ${
+                      className={`shrink-0 text-xs font-semibold tracking-label uppercase transition-opacity ${
                         confirming === item.id
                           ? 'text-correction opacity-100'
                           : 'text-ghost hover:text-correction opacity-0 group-hover:opacity-100'

@@ -92,11 +92,11 @@ export function Waiting({
   const seconds = useElapsed(since ?? null)
   return (
     <div role="status" aria-live="polite" className="mt-6">
-      <p className="font-book text-ghost text-[15px] italic">
+      <p className="font-book text-ghost text-base italic">
         {children}
         {since != null && <span className="font-ui tnum not-italic"> {clock(seconds)}</span>}
       </p>
-      {note && <p className="font-book text-ghost mt-1 text-[13px] italic">{note}</p>}
+      {note && <p className="font-book text-ghost mt-1 text-sm italic">{note}</p>}
     </div>
   )
 }
@@ -116,7 +116,7 @@ export function ErrorLine({
 }) {
   return (
     <div role="alert" className={`mt-8 ${className}`}>
-      <p className="font-book text-correction text-[15px] italic">{children}</p>
+      <p className="font-book text-correction text-base italic">{children}</p>
       {onRetry && (
         <Button variant="text" tone="cobalt" onClick={onRetry} className="mt-2">
           {retryLabel}
@@ -132,7 +132,7 @@ export function Empty({ children, hint }: { children: ReactNode; hint?: ReactNod
   return (
     <div className="mt-10">
       <p className="font-book text-ink-soft text-lg italic">{children}</p>
-      {hint && <p className="text-ghost mt-2 text-[12px]">{hint}</p>}
+      {hint && <p className="text-ghost mt-2 text-xs">{hint}</p>}
     </div>
   )
 }

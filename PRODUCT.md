@@ -11,7 +11,7 @@ web
 React + TypeScript + Tailwind v4 + Motion (Vite) in `frontend/`, over a local
 FastAPI + SQLite backend (`app/server.py`, `data/english.db`). Local-first:
 runs on Eddie's Mac at localhost; no auth, no multi-tenancy. (User-decided,
-ADR-006 D2.)
+ADR-006 D2, ADR-017: a phone reaches it over Tailscale Serve, not a login.)
 
 ## Users
 
@@ -61,11 +61,11 @@ is no engagement conflict of interest.
 
 ## Capabilities and Constraints
 
-- Built (M1–M22), ten lessons in the rail: 01 Today, 02 Vocabulary,
+- Built (M1–M24), ten lessons in the order a day runs: 01 Today, 02 Review (FSRS),
   03 Reading (+ Reader: tap-a-word, ¶ sentence explanation, listen & shadow,
-  comprehension quiz), 04 Podcast, 05 Review (FSRS), 06 Practice,
+  comprehension quiz), 04 Podcast, 05 Shadowing (over video), 06 Practice,
   07 Writing (guided, one sentence at a time), 08 Speaking (+ spoken
-  conversation), 09 Shadowing (over video), 10 Stats.
+  conversation), 09 Vocabulary, 10 Stats.
 - Background jobs queue AI work (`/api/jobs`); a paused course
   (`/api/pause`) freezes the queue without breaking the streak.
 - UI chrome language: **English** (immersion; user-confirmed). Spanish

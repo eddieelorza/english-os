@@ -1,5 +1,6 @@
 /* The shared apparatus. Pages import from here, never from each other. */
 export { SLIDE, NEAR, FAR, slide } from './motion'
+export { Shell } from './Shell'
 export { Page, PageHeader, Section } from './Page'
 export type { PageWidth } from './Page'
 export { Button, ButtonLink } from './Button'

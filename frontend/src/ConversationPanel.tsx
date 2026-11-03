@@ -202,7 +202,7 @@ export default function ConversationPanel() {
   if (phase === 'idle') {
     return (
       <Section className="text-center">
-        <p className="font-book text-ink-soft mx-auto max-w-[52ch] text-[16px]">
+        <p className="font-book text-ink-soft mx-auto max-w-[52ch] text-base">
           Una conversación en inglés, hablada. Nadie te corrige mientras hablas:
           si dices algo mal, la respuesta lo trae bien dicho y sigues. Las
           correcciones — tres como mucho — llegan al final.
@@ -233,11 +233,11 @@ export default function ConversationPanel() {
               transition={SLIDE}
               className={l.who === 'you' ? 'text-right' : ''}
             >
-              <p className="text-ghost text-[10px] font-semibold tracking-[0.2em] uppercase">
+              <p className="text-ghost text-xs font-semibold tracking-label uppercase">
                 {l.who === 'you' ? 'Tú' : 'Sam'}
               </p>
               <p
-                className={`font-book mt-1 text-[17px] leading-snug ${
+                className={`font-book mt-1 text-lg leading-snug ${
                   l.who === 'you' ? 'text-ink-soft' : ''
                 }`}
               >
@@ -298,10 +298,10 @@ function Summary({
       transition={SLIDE}
     >
       <Section>
-        <p className="text-[10px] font-semibold tracking-[0.2em] uppercase">
+        <p className="text-xs font-semibold tracking-label uppercase">
           Conversación terminada
         </p>
-        <p className="font-book text-ink-soft tnum mt-2 text-[15px]">
+        <p className="font-book text-ink-soft tnum mt-2 text-base">
           {summary.turns ?? 0} turnos · {mins} min hablando
         </p>
 
@@ -309,28 +309,28 @@ function Summary({
           <div className="mt-7 space-y-5">
             {summary.corrections.map((c, i) => (
               <div key={i} className="border-rule border-t pt-4">
-                <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+                <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
                   {c.category}
                 </p>
-                <p className="font-book text-correction mt-2 text-[16px] line-through decoration-1">
+                <p className="font-book text-correction mt-2 text-base line-through decoration-1">
                   {c.original}
                 </p>
-                <p className="font-book mt-1 text-[17px] font-semibold">{c.correction}</p>
-                <p className="font-book text-ink-soft mt-1 text-[14px] italic">
+                <p className="font-book mt-1 text-lg font-semibold">{c.correction}</p>
+                <p className="font-book text-ink-soft mt-1 text-sm italic">
                   {c.explanation}
                 </p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="font-book text-ink-soft mt-6 text-[15px] italic">
+          <p className="font-book text-ink-soft mt-6 text-base italic">
             Nada que corregir esta vez.
           </p>
         )}
 
         {summary.strength && (
-          <p className="font-book border-rule mt-7 border-t pt-4 text-[15px]">
-            <span className="text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <p className="font-book border-rule mt-7 border-t pt-4 text-base">
+            <span className="text-xs font-semibold tracking-label uppercase">
               Lo que hiciste bien
             </span>
             <br />

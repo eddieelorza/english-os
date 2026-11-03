@@ -54,7 +54,7 @@ export default function ComprehensionQuiz({
           const revealed = picked != null
           return (
             <li key={qi} className="max-w-[68ch]">
-              <p className="font-book text-[15px] font-semibold">
+              <p className="font-book text-base font-semibold">
                 <span className="tnum text-ghost mr-2">{qi + 1}.</span>
                 {q.question ?? q.prompt}
               </p>
@@ -94,7 +94,7 @@ export default function ComprehensionQuiz({
                     initial={{ y: -8, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={SLIDE}
-                    className={`font-book mt-2 text-[13px] italic ${
+                    className={`font-book mt-2 text-sm italic ${
                       picked === q.answer_index ? 'text-cobalt-deep' : 'text-correction'
                     }`}
                   >

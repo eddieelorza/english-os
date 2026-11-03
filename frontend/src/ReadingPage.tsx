@@ -189,10 +189,10 @@ export default function ReadingPage() {
       {/* Today's lesson, written for you */}
       <Section label="Lesson written for you">
         {aiStatus && !aiStatus.configured ? (
-          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-[14px] italic">
+          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-sm italic">
             The coach needs a model to write with. Set{' '}
-            <code className="font-ui text-cobalt-deep text-[12px]">ANTHROPIC_API_KEY</code> in .env,
-            or run Ollama locally (<code className="font-ui text-cobalt-deep text-[12px]">ollama serve</code>{' '}
+            <code className="font-ui text-cobalt-deep text-xs">ANTHROPIC_API_KEY</code> in .env,
+            or run Ollama locally (<code className="font-ui text-cobalt-deep text-xs">ollama serve</code>{' '}
             + pull a model) — then this panel wakes up.
           </p>
         ) : (
@@ -243,10 +243,10 @@ export default function ReadingPage() {
             onClick={() => setComposing(true)}
             className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash w-full rounded-sm border border-dashed px-4 py-5 text-left transition-colors"
           >
-            <span className="text-[12px] font-semibold tracking-[0.18em] uppercase">
+            <span className="text-xs font-semibold tracking-label uppercase">
               New reading
             </span>
-            <span className="font-book text-ink-soft mt-1 block text-[15px] italic">
+            <span className="font-book text-ink-soft mt-1 block text-base italic">
               Paste any English text — an article, an email, a chapter — and read it with your
               vocabulary highlighted.
             </span>
@@ -259,7 +259,7 @@ export default function ReadingPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Title (optional)"
-                className="placeholder:text-ghost w-full bg-transparent text-[15px] font-semibold outline-none"
+                className="placeholder:text-ghost w-full bg-transparent text-base font-semibold outline-none"
               />
             </label>
             <label className="mt-4 block">
@@ -270,11 +270,11 @@ export default function ReadingPage() {
                 placeholder="Paste your English text here…"
                 rows={8}
                 autoFocus
-                className="font-book border-rule focus:border-cobalt placeholder:text-ghost placeholder:font-ui w-full resize-y border bg-white/60 px-4 py-3 text-[16px] leading-relaxed outline-none"
+                className="font-book border-rule focus:border-cobalt placeholder:text-ghost placeholder:font-ui w-full resize-y border bg-surface/60 px-4 py-3 text-base leading-relaxed outline-none"
               />
             </label>
             <div className="mt-3 flex items-center justify-between">
-              <p className="tnum text-ghost text-[12px]">{fmt(wordCount)} words</p>
+              <p className="tnum text-ghost text-xs">{fmt(wordCount)} words</p>
               <div className="flex gap-4">
                 <Button variant="text" onClick={() => setComposing(false)}>
                   Cancel
@@ -306,7 +306,7 @@ export default function ReadingPage() {
         )}
         {days?.map((day) => (
           <section key={day.date} className="mb-8">
-            <h3 className="border-rule-strong text-ghost border-b pb-1 text-[10px] font-semibold tracking-[0.2em] uppercase">
+            <h3 className="border-rule-strong text-ghost border-b pb-1 text-xs font-semibold tracking-label uppercase">
               {dayLabel(day.date)}
             </h3>
             <ul>
@@ -317,12 +317,12 @@ export default function ReadingPage() {
                 >
                   <Link
                     to={`/reading/${t.id}`}
-                    className="font-book min-w-0 flex-1 truncate text-[16px] font-semibold"
+                    className="font-book min-w-0 flex-1 truncate text-base font-semibold"
                   >
                     {t.title}
                   </Link>
                   {t.level && (
-                    <span className="text-ghost shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                    <span className="text-ghost shrink-0 text-xs font-semibold tracking-label uppercase">
                       {t.level}
                     </span>
                   )}
@@ -332,7 +332,7 @@ export default function ReadingPage() {
                     </span>
                   )}
                   {t.finished && (
-                    <span className="text-cobalt-deep shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                    <span className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                       read
                     </span>
                   )}
@@ -340,7 +340,7 @@ export default function ReadingPage() {
                     onClick={() => remove(t.id, t.title)}
                     aria-label={`Delete ${t.title}`}
                     title="Delete this reading"
-                    className={`shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase transition-opacity ${
+                    className={`shrink-0 text-xs font-semibold tracking-label uppercase transition-opacity ${
                       confirming === t.id
                         ? 'text-correction opacity-100'
                         : 'text-ghost hover:text-correction opacity-0 group-hover:opacity-100'
@@ -371,7 +371,7 @@ function GenChoice({
 }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">{label}</span>
+      <span className="text-ghost text-xs font-semibold tracking-label uppercase">{label}</span>
       <div className="flex flex-wrap gap-x-3 gap-y-1" role="radiogroup" aria-label={label}>
         {options.map((o) => (
           <button
@@ -379,7 +379,7 @@ function GenChoice({
             role="radio"
             aria-checked={value === o}
             onClick={() => onPick(o)}
-            className={`text-[12px] font-semibold transition-colors ${
+            className={`text-xs font-semibold transition-colors ${
               value === o
                 ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                 : 'text-ghost hover:text-ink-soft'

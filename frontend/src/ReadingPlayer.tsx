@@ -124,14 +124,14 @@ export default function ReadingPlayer({
             </Button>
 
             <div className="flex items-baseline gap-2">
-              <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+              <span className="text-ghost text-xs font-semibold tracking-label uppercase">
                 Speed
               </span>
               {SPEEDS.map((s) => (
                 <button
                   key={s}
                   onClick={() => changeSpeed(s)}
-                  className={`tnum text-[12px] font-semibold transition-colors ${
+                  className={`tnum text-xs font-semibold transition-colors ${
                     speed === s
                       ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                       : 'text-ghost hover:text-ink-soft'

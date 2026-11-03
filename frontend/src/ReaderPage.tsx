@@ -227,7 +227,7 @@ export default function ReaderPage() {
   if (finished && stats)
     return (
       <Page width="study" bottom="pb-24">
-        <PageHeader overline="Reading finished" title={text.title} serif />
+        <PageHeader overline="Reading finished" title={text.title} />
         <dl className="tnum border-rule mt-8 border-t">
           <Colophon k="Time" v={fmtTime(finished.seconds)} />
           <Colophon k="Length" v={`${fmt(stats.total)} words · ${fmt(stats.unique)} unique`} />
@@ -256,10 +256,9 @@ export default function ReaderPage() {
           </Link>
         }
         title={text.title}
-        serif
         meta={
           stats && (
-            <span className="tnum text-ghost text-[12px]">
+            <span className="tnum text-ghost text-xs">
               {fmt(stats.total)} words · {fmt(stats.unknown)} unknown
             </span>
           )
@@ -271,7 +270,7 @@ export default function ReaderPage() {
 
       {/* The page itself */}
       <div ref={articleRef} className="relative">
-        <article className="font-book mt-8 max-w-[68ch] text-[17px] leading-[1.75]">
+        <article className="font-book mt-8 max-w-[68ch] text-lg leading-[1.75]">
           {(() => {
             let sentenceIndex = -1
             return text.body.split(/\n+/).map((para, pi) => (
@@ -315,7 +314,7 @@ export default function ReaderPage() {
                         onClick={() => askExplain(idx, sentence.trim())}
                         aria-label="Explain this sentence"
                         title="Explain this sentence"
-                        className={`text-cobalt-deep font-ui align-baseline text-[10px] font-semibold ${
+                        className={`text-cobalt-deep font-ui align-baseline text-xs font-semibold ${
                           explaining ? 'inline' : 'hidden group-hover:inline'
                         }`}
                       >
@@ -339,7 +338,7 @@ export default function ReaderPage() {
               exit={{ y: -8, opacity: 0 }}
               transition={SLIDE}
               style={{ top: popup.top, left: popup.left, width: 340, maxWidth: '100%' }}
-              className="border-rule-strong absolute z-10 border bg-white p-4 shadow-[0_6px_24px_rgba(22,24,28,0.12)]"
+              className="border-rule-strong absolute z-10 border bg-surface p-4 shadow-slip"
               role="dialog"
               aria-label={`Dictionary: ${popup.token}`}
             >
@@ -348,7 +347,7 @@ export default function ReaderPage() {
                   {popup.entry?.word ?? popup.token.toLowerCase()}
                   <PlayButton src={popup.entry?.audio_word ?? null} label="Hear the word" />
                   {popup.entry?.pronunciation && (
-                    <span className="text-ghost text-[12px] font-normal">/{popup.entry.pronunciation}/</span>
+                    <span className="text-ghost text-xs font-normal">/{popup.entry.pronunciation}/</span>
                   )}
                 </p>
                 <button onClick={() => setPopup(null)} aria-label="Close" className="text-ghost hover:text-ink -mr-1 px-1 text-sm">
@@ -359,10 +358,10 @@ export default function ReaderPage() {
               {popup.entry ? (
                 <>
                   {popup.entry.meaning_en && (
-                    <p className="font-book mt-2 text-[14px] leading-relaxed">{popup.entry.meaning_en}</p>
+                    <p className="font-book mt-2 text-sm leading-relaxed">{popup.entry.meaning_en}</p>
                   )}
                   {popup.entry.example_en && (
-                    <p className="font-book text-ink-soft mt-1.5 flex items-start gap-2 text-[13px] italic">
+                    <p className="font-book text-ink-soft mt-1.5 flex items-start gap-2 text-sm italic">
                       <span>“{popup.entry.example_en}”</span>
                       <PlayButton
                         src={popup.entry.audio_example ?? null}
@@ -374,13 +373,13 @@ export default function ReaderPage() {
                   )}
                   {popup.entry.meaning_es &&
                     (esOpen ? (
-                      <p lang="es" className="font-book text-cobalt-deep mt-2 text-[14px]">
+                      <p lang="es" className="font-book text-cobalt-deep mt-2 text-sm">
                         {popup.entry.meaning_es}
                       </p>
                     ) : (
                       <button
                         onClick={() => setEsOpen(true)}
-                        className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash mt-2.5 rounded-sm border border-dashed px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors"
+                        className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash mt-2.5 rounded-sm border border-dashed px-2.5 py-1 text-xs font-semibold tracking-label uppercase transition-colors"
                       >
                         Uncover Spanish
                       </button>
@@ -390,7 +389,7 @@ export default function ReaderPage() {
                       <button
                         key={s}
                         onClick={() => setStatus(popup.entry!, s)}
-                        className={`text-[10px] font-semibold tracking-[0.12em] uppercase ${
+                        className={`text-xs font-semibold tracking-label uppercase ${
                           popup.entry!.status === s
                             ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                             : 'text-ghost hover:text-ink-soft'
@@ -403,7 +402,7 @@ export default function ReaderPage() {
                 </>
               ) : (
                 <>
-                  <p className="font-book text-ink-soft mt-2 text-[14px] italic">
+                  <p className="font-book text-ink-soft mt-2 text-sm italic">
                     Not in your ledger yet.
                   </p>
                   <Button
@@ -433,7 +432,7 @@ export default function ReaderPage() {
           >
             <div className="border-cobalt/30 bg-cobalt-wash/40 mt-6 border-l-2 py-4 pr-4 pl-4">
               <div className="flex items-baseline justify-between gap-4">
-                <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+                <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
                   This sentence
                 </p>
                 <button
@@ -476,7 +475,7 @@ export default function ReaderPage() {
       )}
 
       <footer className="border-rule mt-6 flex items-center justify-between border-t pt-4">
-        <p className="tnum text-ghost text-[12px]">
+        <p className="tnum text-ghost text-xs">
           {added.length > 0 && `${added.length} word${added.length === 1 ? '' : 's'} added this session`}
         </p>
         <Button variant="primary" onClick={finish}>
@@ -490,10 +489,10 @@ export default function ReaderPage() {
 function Explained({ k, v, lang }: { k: string; v: string; lang?: string }) {
   return (
     <div className="flex flex-wrap gap-x-3">
-      <dt className="text-cobalt-deep w-20 shrink-0 text-[10px] font-semibold tracking-[0.14em] uppercase">
+      <dt className="text-cobalt-deep w-20 shrink-0 text-xs font-semibold tracking-label uppercase">
         {k}
       </dt>
-      <dd className="font-book text-ink-soft min-w-0 flex-1 text-[14px] leading-relaxed" lang={lang}>
+      <dd className="font-book text-ink-soft min-w-0 flex-1 text-sm leading-relaxed" lang={lang}>
         {v}
       </dd>
     </div>
@@ -502,7 +501,7 @@ function Explained({ k, v, lang }: { k: string; v: string; lang?: string }) {
 
 function Colophon({ k, v }: { k: string; v: string }) {
   return (
-    <div className="border-rule flex justify-between gap-6 border-b py-2.5 text-[14px]">
+    <div className="border-rule flex justify-between gap-6 border-b py-2.5 text-sm">
       <dt className="text-ghost">{k}</dt>
       <dd className="text-right font-semibold">{v}</dd>
     </div>

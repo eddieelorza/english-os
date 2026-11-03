@@ -1,7 +1,11 @@
-/* The one motion law (DESIGN rule 4): everything slides along its column axis
-   with an exponential ease-out. It lived in VocabularyPage until M23; it is
-   the app's law, not a page's detail, so it lives here now. */
-export const SLIDE = { duration: 0.32, ease: [0.16, 1, 0.3, 1] as const }
+/* The motion law (DESIGN rule 4): things slide along their column axis with an
+   exponential ease-out, at one of three speeds. `micro` answers a touch,
+   `component` opens something in place, `page` brings something from outside
+   the column. index.css carries the same curve and `micro` for CSS transitions. */
+export const EASE = [0.16, 1, 0.3, 1] as const
+export const DUR = { micro: 0.12, component: 0.2, page: 0.28 } as const
+
+export const SLIDE = { duration: DUR.component, ease: EASE }
 
 /* Two amplitudes, so a row expanding and a panel arriving are not eight
    different distances: `near` for something opening in place, `far` for

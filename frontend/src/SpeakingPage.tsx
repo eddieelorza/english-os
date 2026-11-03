@@ -149,7 +149,7 @@ export default function SpeakingPage() {
           <button
             key={m}
             onClick={() => setMode(m)}
-            className={`text-[11px] font-semibold tracking-[0.16em] uppercase transition-colors ${
+            className={`text-xs font-semibold tracking-label uppercase transition-colors ${
               mode === m
                 ? 'text-cobalt-deep border-cobalt-deep -mb-[13px] border-b-2 pb-3'
                 : 'text-ghost hover:text-ink-soft'
@@ -181,9 +181,9 @@ export default function SpeakingPage() {
           </ErrorLine>
         ) : prompt ? (
           <>
-            <p className="font-book mt-3 text-2xl leading-snug">{prompt}</p>
+            <p className="font-book mt-3 text-xl leading-snug">{prompt}</p>
             {promptWords.length > 0 && (
-              <p className="text-ghost mt-2 text-[12px]">
+              <p className="text-ghost mt-2 text-xs">
                 Try to use:{' '}
                 {promptWords.map((w, i) => (
                   <span key={w}>
@@ -226,7 +226,7 @@ export default function SpeakingPage() {
             <Button variant="danger" onClick={stopRecording}>
               Stop
             </Button>
-            <p className="tnum text-ink-soft text-[14px]">
+            <p className="tnum text-ink-soft text-sm">
               <span aria-hidden className="bg-correction mr-2 inline-block h-2 w-2 animate-pulse rounded-full" />
               Recording · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
             </p>
@@ -269,27 +269,27 @@ export default function SpeakingPage() {
             transition={SLIDE}
           >
             <Section label="What you said">
-              <p className="font-book text-ink-soft mt-2 max-w-[68ch] text-[15px] leading-relaxed italic">
+              <p className="font-book text-ink-soft mt-2 max-w-[68ch] text-base leading-relaxed italic">
                 “{result.transcript}”
               </p>
-              <p className="tnum text-ghost mt-1 text-[12px]">
+              <p className="tnum text-ghost mt-1 text-xs">
                 {fmt(result.words_produced)} words · {Math.round(result.duration_seconds)} s
               </p>
 
               {result.errors.length > 0 && (
                 <>
-                  <h3 className="mt-6 text-[12px] font-semibold tracking-[0.18em] uppercase">
+                  <h3 className="mt-6 text-xs font-semibold tracking-label uppercase">
                     Corrections
                   </h3>
                   <ul className="mt-3 space-y-4">
                     {result.errors.map((e, i) => (
                       <li key={i} className="border-rule border-b pb-4">
-                        <p className="font-book text-correction text-[15px]">✗ {e.original}</p>
-                        <p className="font-book text-cobalt-deep mt-1 text-[15px] font-semibold">
+                        <p className="font-book text-correction text-base">✗ {e.original}</p>
+                        <p className="font-book text-cobalt-deep mt-1 text-base font-semibold">
                           ✓ {e.correction}
                         </p>
-                        <p className="font-book text-ink-soft mt-1.5 text-[13px]">
-                          <span className="font-ui text-cobalt-deep mr-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                        <p className="font-book text-ink-soft mt-1.5 text-sm">
+                          <span className="font-ui text-cobalt-deep mr-2 text-xs font-semibold tracking-label uppercase">
                             {e.category}
                           </span>
                           {e.explanation}
@@ -300,29 +300,29 @@ export default function SpeakingPage() {
                 </>
               )}
 
-              <h3 className="mt-6 text-[12px] font-semibold tracking-[0.18em] uppercase">
+              <h3 className="mt-6 text-xs font-semibold tracking-label uppercase">
                 How a fluent speaker would say it
               </h3>
-              <p className="font-book mt-2 max-w-[68ch] text-[16px] leading-relaxed">
+              <p className="font-book mt-2 max-w-[68ch] text-base leading-relaxed">
                 {result.natural_version}
               </p>
 
-              <dl className="border-rule mt-6 border-t pt-4 text-[14px]">
+              <dl className="border-rule mt-6 border-t pt-4 text-sm">
                 <div className="flex gap-3">
-                  <dt className="text-cobalt-deep shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
+                  <dt className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                     Strength
                   </dt>
                   <dd className="font-book text-ink-soft">{result.strength}</dd>
                 </div>
                 <div className="mt-2 flex gap-3">
-                  <dt className="text-cobalt-deep shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
+                  <dt className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                     Practice
                   </dt>
                   <dd className="font-book text-ink-soft">{result.practice_next}</dd>
                 </div>
               </dl>
 
-              <p className="text-ghost mt-4 text-[12px]">
+              <p className="text-ghost mt-4 text-xs">
                 {result.errors.length > 0
                   ? `${result.errors.length} correction${result.errors.length === 1 ? '' : 's'} saved to your error library — tomorrow's material will target them.`
                   : 'No errors recorded — clean answer.'}

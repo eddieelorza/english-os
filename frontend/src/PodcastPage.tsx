@@ -140,7 +140,7 @@ export default function PodcastPage() {
       />
 
       <Section label="Record an episode">
-        <p className="font-book text-ink-soft mt-1 text-[15px]">
+        <p className="font-book text-ink-soft mt-1 text-base">
           Two hosts talking, using the words you're learning — listen along with
           the transcript, or with your ears only.
         </p>
@@ -183,7 +183,7 @@ export default function PodcastPage() {
         <div className="mt-10">
           {groupByDay(items).map(([date, list]) => (
             <section key={date} className="mb-6">
-              <h3 className="border-rule-strong text-ghost border-b pb-1 text-[10px] font-semibold tracking-[0.2em] uppercase">
+              <h3 className="border-rule-strong text-ghost border-b pb-1 text-xs font-semibold tracking-label uppercase">
                 {dayLabel(date)}
               </h3>
               <ul>
@@ -193,16 +193,16 @@ export default function PodcastPage() {
                       onClick={() => open(p.id)}
                       className="hover:bg-cobalt-wash/60 flex w-full items-baseline gap-4 py-3.5 pr-2 pl-1 text-left transition-colors"
                     >
-                      <span className="font-book min-w-0 flex-1 truncate text-[16px] font-semibold">
+                      <span className="font-book min-w-0 flex-1 truncate text-base font-semibold">
                         {p.title}
                       </span>
                       {p.level && (
-                        <span className="text-ghost shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                        <span className="text-ghost shrink-0 text-xs font-semibold tracking-label uppercase">
                           {p.level}
                         </span>
                       )}
                       {p.finished && (
-                        <span className="text-cobalt-deep shrink-0 text-[10px] font-semibold tracking-[0.16em] uppercase">
+                        <span className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                           heard
                         </span>
                       )}
@@ -310,10 +310,9 @@ function Player({
       </Button>
 
       <PageHeader
-        serif
         title={episode.title}
         subtitle={
-          <span className="text-ghost text-[12px]">
+          <span className="text-ghost text-xs">
             {episode.speakers.A} &amp; {episode.speakers.B}
             {episode.level && ` · ${episode.level}`} · {clock(total)}
           </span>
@@ -329,20 +328,20 @@ function Player({
 
         <button
           onClick={repeatTurn}
-          className="text-cobalt-deep hover:text-cobalt text-[11px] font-semibold tracking-[0.14em] uppercase"
+          className="text-cobalt-deep hover:text-cobalt text-xs font-semibold tracking-label uppercase"
         >
           Repeat turn
         </button>
 
         <div className="flex items-baseline gap-2">
-          <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+          <span className="text-ghost text-xs font-semibold tracking-label uppercase">
             Speed
           </span>
           {SPEEDS.map((s) => (
             <button
               key={s}
               onClick={() => changeSpeed(s)}
-              className={`tnum text-[12px] font-semibold transition-colors ${
+              className={`tnum text-xs font-semibold transition-colors ${
                 speed === s
                   ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                   : 'text-ghost hover:text-ink-soft'
@@ -354,14 +353,14 @@ function Player({
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+          <span className="text-ghost text-xs font-semibold tracking-label uppercase">
             Mode
           </span>
           {(['shadow', 'ear'] as Mode[]).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`text-[12px] font-semibold transition-colors ${
+              className={`text-xs font-semibold transition-colors ${
                 mode === m
                   ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                   : 'text-ghost hover:text-ink-soft'
@@ -372,7 +371,7 @@ function Player({
           ))}
         </div>
 
-        <span className="tnum text-ghost ml-auto text-[12px]">
+        <span className="tnum text-ghost ml-auto text-xs">
           {clock(elapsed)} / {clock(total)}
         </span>
       </div>
@@ -390,14 +389,14 @@ function Player({
                 }`}
               >
                 <span
-                  className={`shrink-0 text-[11px] font-semibold tracking-[0.12em] uppercase ${
+                  className={`shrink-0 text-xs font-semibold tracking-label uppercase ${
                     t.speaker === 'A' ? 'text-cobalt-deep' : 'text-ink-soft'
                   }`}
                   style={{ width: '5.5rem' }}
                 >
                   {episode.speakers[t.speaker]}
                 </span>
-                <p className="font-book min-w-0 flex-1 text-[16px] leading-relaxed">{t.text}</p>
+                <p className="font-book min-w-0 flex-1 text-base leading-relaxed">{t.text}</p>
               </div>
             )
           })}
@@ -411,7 +410,7 @@ function Player({
             When the episode ends, a few questions will check what you caught.
           </p>
           {episode.words_target.length > 0 && (
-            <p className="text-ghost mt-6 text-[12px]">
+            <p className="text-ghost mt-6 text-xs">
               Listen out for:{' '}
               {episode.words_target.slice(0, 6).map((w, i) => (
                 <span key={w}>
@@ -457,7 +456,7 @@ function Choice({
 }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+      <span className="text-ghost text-xs font-semibold tracking-label uppercase">
         {label}
       </span>
       <div className="flex flex-wrap gap-x-3 gap-y-1" role="radiogroup" aria-label={label}>
@@ -467,7 +466,7 @@ function Choice({
             role="radio"
             aria-checked={value === o}
             onClick={() => onPick(o)}
-            className={`text-[12px] font-semibold transition-colors ${
+            className={`text-xs font-semibold transition-colors ${
               value === o
                 ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                 : 'text-ghost hover:text-ink-soft'

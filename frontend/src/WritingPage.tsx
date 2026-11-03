@@ -204,9 +204,9 @@ export default function WritingPage() {
           </ErrorLine>
         ) : prompt ? (
           <>
-            <p className="font-book mt-3 text-2xl leading-snug">{prompt}</p>
+            <p className="font-book mt-3 text-xl leading-snug">{prompt}</p>
             {words.length > 0 && (
-              <p className="text-ghost mt-2 text-[12px]">
+              <p className="text-ghost mt-2 text-xs">
                 Try to use:{' '}
                 {words.map((w, i) => (
                   <span key={w}>
@@ -238,11 +238,11 @@ export default function WritingPage() {
               placeholder="Four to six sentences is plenty…"
               rows={7}
               disabled={!prompt}
-              className="font-book border-rule focus:border-cobalt placeholder:text-ghost placeholder:font-ui w-full resize-y border bg-white/60 px-4 py-3 text-[16px] leading-relaxed outline-none disabled:opacity-50"
+              className="font-book border-rule focus:border-cobalt placeholder:text-ghost placeholder:font-ui w-full resize-y border bg-surface/60 px-4 py-3 text-base leading-relaxed outline-none disabled:opacity-50"
             />
           </label>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-            <p className="tnum text-ghost text-[12px]">
+            <p className="tnum text-ghost text-xs">
               {fmt(wordCount)} words · {clock}
             </p>
             <Button onClick={send} disabled={wordCount < 5 || sending}>
@@ -279,10 +279,10 @@ export default function WritingPage() {
 
               {/* What he asked for: which tenses did I actually use? */}
               <div className="border-rule border-b py-4">
-                <p className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+                <p className="text-ghost text-xs font-semibold tracking-label uppercase">
                   Tenses you used
                 </p>
-                <p className="font-book mt-1.5 text-[15px]">
+                <p className="font-book mt-1.5 text-base">
                   {result.tenses_used.length > 0 ? (
                     result.tenses_used.map((t, i) => (
                       <span key={t}>
@@ -295,7 +295,7 @@ export default function WritingPage() {
                   )}
                 </p>
                 <p
-                  className={`font-book mt-2 text-[14px] italic ${
+                  className={`font-book mt-2 text-sm italic ${
                     result.focus_hit ? 'text-cobalt-deep' : 'text-correction'
                   }`}
                 >
@@ -306,18 +306,18 @@ export default function WritingPage() {
 
               {result.errors.length > 0 && (
                 <>
-                  <h3 className="mt-6 text-[12px] font-semibold tracking-[0.18em] uppercase">
+                  <h3 className="mt-6 text-xs font-semibold tracking-label uppercase">
                     Corrections
                   </h3>
                   <ul className="mt-3 space-y-4">
                     {result.errors.map((e, i) => (
                       <li key={i} className="border-rule border-b pb-4">
-                        <p className="font-book text-correction text-[15px]">✗ {e.original}</p>
-                        <p className="font-book text-cobalt-deep mt-1 text-[15px] font-semibold">
+                        <p className="font-book text-correction text-base">✗ {e.original}</p>
+                        <p className="font-book text-cobalt-deep mt-1 text-base font-semibold">
                           ✓ {e.correction}
                         </p>
-                        <p className="font-book text-ink-soft mt-1.5 text-[13px]">
-                          <span className="font-ui text-cobalt-deep mr-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                        <p className="font-book text-ink-soft mt-1.5 text-sm">
+                          <span className="font-ui text-cobalt-deep mr-2 text-xs font-semibold tracking-label uppercase">
                             {e.category}
                           </span>
                           {e.explanation}
@@ -328,22 +328,22 @@ export default function WritingPage() {
                 </>
               )}
 
-              <h3 className="mt-6 text-[12px] font-semibold tracking-[0.18em] uppercase">
+              <h3 className="mt-6 text-xs font-semibold tracking-label uppercase">
                 Your text at B2
               </h3>
-              <p className="font-book mt-2 max-w-[68ch] text-[16px] leading-relaxed">
+              <p className="font-book mt-2 max-w-[68ch] text-base leading-relaxed">
                 {result.improved_version}
               </p>
 
-              <dl className="border-rule mt-6 border-t pt-4 text-[14px]">
+              <dl className="border-rule mt-6 border-t pt-4 text-sm">
                 <div className="flex gap-3">
-                  <dt className="text-cobalt-deep shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
+                  <dt className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                     Strength
                   </dt>
                   <dd className="font-book text-ink-soft">{result.strength}</dd>
                 </div>
                 <div className="mt-2 flex gap-3">
-                  <dt className="text-cobalt-deep shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
+                  <dt className="text-cobalt-deep shrink-0 text-xs font-semibold tracking-label uppercase">
                     Practice
                   </dt>
                   <dd className="font-book text-ink-soft">{result.practice_next}</dd>
@@ -368,8 +368,8 @@ export default function WritingPage() {
 function Stat({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <dt className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">{k}</dt>
-      <dd className="text-ink mt-1 text-xl font-extrabold">{v}</dd>
+      <dt className="text-ghost text-xs font-semibold tracking-label uppercase">{k}</dt>
+      <dd className="text-ink mt-1 text-xl font-semibold">{v}</dd>
     </div>
   )
 }
@@ -391,29 +391,29 @@ function GuidedSummary({
       transition={SLIDE}
     >
       <Section>
-        <p className="text-[10px] font-semibold tracking-[0.2em] uppercase">Reply sent</p>
-        <p className="tnum mt-3 text-5xl font-extrabold tracking-tight">
+        <p className="text-xs font-semibold tracking-label uppercase">Reply sent</p>
+        <p className="tnum mt-3 text-4xl font-semibold tracking-tight">
           {fmt(result.words_produced)}
-          <span className="text-ghost text-2xl font-bold"> words</span>
+          <span className="text-ghost text-xl font-bold"> words</span>
         </p>
-        <p className="font-book text-ink-soft mt-1 text-[14px]">
+        <p className="font-book text-ink-soft mt-1 text-sm">
           {fmt(result.sentences)} sentences in about {fmt(minutes)} minute
           {minutes === 1 ? '' : 's'} · {fmt(result.errors.length)} to fix
         </p>
 
         <div className="border-cobalt/30 bg-cobalt-wash/40 mt-6 border-l-2 py-4 pl-4">
-          <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
             Your reply
           </p>
-          <p className="font-book mt-2 max-w-[62ch] text-[16px] leading-relaxed">
+          <p className="font-book mt-2 max-w-[62ch] text-base leading-relaxed">
             {result.improved_version}
           </p>
         </div>
 
-        <p className="font-book text-ink-soft mt-4 max-w-[62ch] text-[15px]">
+        <p className="font-book text-ink-soft mt-4 max-w-[62ch] text-base">
           {result.strength}
         </p>
-        <p lang="es" className="font-book text-ghost mt-1 max-w-[62ch] text-[14px] italic">
+        <p lang="es" className="font-book text-ghost mt-1 max-w-[62ch] text-sm italic">
           {result.practice_next}
         </p>
 

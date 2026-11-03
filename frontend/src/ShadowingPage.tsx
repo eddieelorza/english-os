@@ -196,7 +196,7 @@ export default function ShadowingPage() {
         <PageHeader
           title="Shadowing"
           subtitle={
-            <p className="max-w-[58ch] text-[16px]">
+            <p className="max-w-[58ch] text-base">
               Pega un vídeo de YouTube. Se baja el audio, se transcribe y te queda
               línea por línea para repetir detrás. Funciona mejor con gente
               hablando —una charla, una entrevista— que con canciones: al cantar se
@@ -213,7 +213,7 @@ export default function ShadowingPage() {
               onKeyDown={(e) => e.key === 'Enter' && submit()}
               placeholder="https://www.youtube.com/watch?v=…"
               disabled={working}
-              className="border-rule font-book focus:border-cobalt-deep flex-1 border-b bg-transparent pb-2 text-[15px] outline-none disabled:opacity-50"
+              className="border-rule font-book focus:border-cobalt-deep flex-1 border-b bg-transparent pb-2 text-base outline-none disabled:opacity-50"
             />
             <Button onClick={submit} disabled={working || !url.trim()} size="sm">
               {working ? 'Preparando…' : 'Preparar'}
@@ -253,10 +253,10 @@ export default function ShadowingPage() {
                     onClick={() => load(s.id)}
                     className="group w-full text-left"
                   >
-                    <span className="font-book group-hover:text-cobalt-deep text-[16px] transition-colors">
+                    <span className="font-book group-hover:text-cobalt-deep text-base transition-colors">
                       {s.title || 'Sin título'}
                     </span>
-                    <span className="tnum text-ghost ml-2 text-[12px]">
+                    <span className="tnum text-ghost ml-2 text-xs">
                       {s.channel ? `${s.channel} · ` : ''}
                       {fmt(s.done)}/{fmt(s.lines)} líneas
                       {s.confidence !== null && s.confidence <= -0.8
@@ -279,10 +279,10 @@ export default function ShadowingPage() {
       <Button variant="text" size="sm" onClick={() => setSession(null)}>
         ← Otro vídeo
       </Button>
-      <h2 className="mt-3 text-3xl font-extrabold tracking-tight">
+      <h2 className="font-book mt-3 text-2xl font-semibold tracking-tight">
         {session.title || 'Shadowing'}
       </h2>
-      <p className="tnum text-ghost mt-1 text-[12px]">
+      <p className="tnum text-ghost mt-1 text-xs">
         {session.channel} · {fmt(session.done)}/{fmt(total)} líneas
       </p>
 
@@ -301,12 +301,12 @@ export default function ShadowingPage() {
         initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={SLIDE}
-        className="border-rule-strong mt-8 border bg-white/70 px-6 py-10 text-center sm:px-10"
+        className="border-rule-strong mt-8 border bg-surface/70 px-6 py-10 text-center sm:px-10"
       >
-        <p className="tnum text-ghost text-[10px] font-semibold tracking-[0.2em] uppercase">
+        <p className="tnum text-ghost text-xs font-semibold tracking-label uppercase">
           Línea {cursor + 1} de {total}
         </p>
-        <p className="font-book mt-4 text-2xl leading-snug">{line?.text}</p>
+        <p className="font-book mt-4 text-xl leading-snug">{line?.text}</p>
 
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button onClick={play}>{playing ? '♪ sonando' : 'Escuchar'}</Button>
@@ -314,7 +314,7 @@ export default function ShadowingPage() {
             <button
               key={s}
               onClick={() => setSpeed(s)}
-              className={`tnum px-3 py-3 text-[11px] font-semibold transition-colors ${
+              className={`tnum px-3 py-3 text-xs font-semibold transition-colors ${
                 speed === s ? 'text-cobalt-deep' : 'text-ghost hover:text-ink-soft'
               }`}
             >
@@ -338,7 +338,7 @@ export default function ShadowingPage() {
         </Button>
       </div>
 
-      <p className="tnum text-ghost mt-6 text-center text-[11px]">
+      <p className="tnum text-ghost mt-6 text-center text-xs">
         espacio para volver a oírla · enter para pasar a la siguiente
       </p>
     </Page>

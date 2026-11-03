@@ -76,22 +76,22 @@ export default function WordEntry({
             ghost && !open ? 'opacity-55' : ''
           }`}
         >
-          <span className="tnum text-ghost w-10 shrink-0 text-right text-[12px]">{index}</span>
-          <span className="font-book min-w-0 text-[17px] leading-snug font-semibold">
+          <span className="tnum text-ghost w-10 shrink-0 text-right text-xs">{index}</span>
+          <span className="font-book min-w-0 text-lg leading-snug font-semibold">
             {word.word}
             <PlayButton src={word.audio_word} label={`Hear ${word.word}`} className="ml-2 align-middle" />
             {word.pronunciation && (
-              <span className="text-ghost ml-2.5 inline-block text-[13px] font-normal">
+              <span className="text-ghost ml-2.5 inline-block text-sm font-normal">
                 /{word.pronunciation}/
               </span>
             )}
             {KIND_LABEL[word.kind] && (
-              <span className="text-cobalt-deep ml-2.5 align-middle text-[10px] font-sans font-semibold tracking-[0.14em] uppercase">
+              <span className="text-cobalt-deep ml-2.5 align-middle text-xs font-sans font-semibold tracking-label uppercase">
                 {KIND_LABEL[word.kind]}
               </span>
             )}
           </span>
-          <span className="tnum text-ghost ml-auto shrink-0 text-right text-[12px]">
+          <span className="tnum text-ghost ml-auto shrink-0 text-right text-xs">
             {word.status === 'NEW'
               ? 'not studied'
               : `${fmt(word.review_count)} rev · ${word.interval_days ? `${fmt(word.interval_days)} d` : '—'}`}
@@ -110,10 +110,10 @@ export default function WordEntry({
             >
               <div className="pr-5 pb-6 pl-[58px] lg:pl-[72px]">
                 {word.meaning_en && (
-                  <p className="font-book max-w-[68ch] text-[15px] leading-relaxed">{word.meaning_en}</p>
+                  <p className="font-book max-w-[68ch] text-base leading-relaxed">{word.meaning_en}</p>
                 )}
                 {word.example_en && (
-                  <p className="font-book text-ink-soft mt-2 flex max-w-[68ch] items-start gap-2 text-[15px] leading-relaxed italic">
+                  <p className="font-book text-ink-soft mt-2 flex max-w-[68ch] items-start gap-2 text-base leading-relaxed italic">
                     <span>“{word.example_en}”</span>
                     <PlayButton
                       src={word.audio_example}
@@ -135,7 +135,7 @@ export default function WordEntry({
                           animate={{ x: 0, opacity: 1 }}
                           exit={{ x: -24, opacity: 0 }}
                           transition={SLIDE}
-                          className="font-book text-cobalt-deep max-w-[68ch] text-[15px]"
+                          className="font-book text-cobalt-deep max-w-[68ch] text-base"
                           lang="es"
                         >
                           {word.meaning_es}
@@ -151,7 +151,7 @@ export default function WordEntry({
                           animate={{ x: 0, opacity: 1 }}
                           exit={{ x: 24, opacity: 0 }}
                           transition={SLIDE}
-                          className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash rounded-sm border border-dashed px-3 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors"
+                          className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash rounded-sm border border-dashed px-3 py-1 text-xs font-semibold tracking-label uppercase transition-colors"
                         >
                           Uncover Spanish
                         </motion.button>
@@ -162,7 +162,7 @@ export default function WordEntry({
 
                 {/* Instrument readouts */}
                 {word.status !== 'NEW' && (
-                  <dl className="tnum text-ink-soft mt-5 flex flex-wrap gap-x-8 gap-y-1 text-[12px]">
+                  <dl className="tnum text-ink-soft mt-5 flex flex-wrap gap-x-8 gap-y-1 text-xs">
                     <Readout k="Reviews" v={fmt(word.review_count)} />
                     <Readout
               k="Interval"
@@ -180,10 +180,10 @@ export default function WordEntry({
                 {/* Review history */}
                 {detail && detail.reviews.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+                    <h4 className="text-ghost text-xs font-semibold tracking-label uppercase">
                       Recent reviews
                     </h4>
-                    <ul className="tnum text-ink-soft mt-1.5 space-y-0.5 text-[12px]">
+                    <ul className="tnum text-ink-soft mt-1.5 space-y-0.5 text-xs">
                       {detail.reviews.slice(0, 5).map((r, i) => (
                         <li key={i} className="flex gap-4">
                           <span className="w-24">{r.reviewed_at.slice(0, 10)}</span>
@@ -198,7 +198,7 @@ export default function WordEntry({
 
                 {/* Status control — a ruled workbook line, not chips */}
                 <div className="border-rule mt-6 flex items-center gap-5 border-t pt-3">
-                  <span className="text-ghost text-[10px] font-semibold tracking-[0.18em] uppercase">
+                  <span className="text-ghost text-xs font-semibold tracking-label uppercase">
                     Status
                   </span>
                   <div className="flex gap-4" role="radiogroup" aria-label="Word status">
@@ -211,7 +211,7 @@ export default function WordEntry({
                           aria-checked={active}
                           disabled={saving}
                           onClick={() => setStatus(s)}
-                          className={`text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors disabled:opacity-40 ${
+                          className={`text-xs font-semibold tracking-label uppercase transition-colors disabled:opacity-40 ${
                             active
                               ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                               : 'text-ghost hover:text-ink-soft'

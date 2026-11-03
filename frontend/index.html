@@ -2,8 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbfaf7" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>English OS</title>
+    <script>
+      /* Before first paint, or Night flashes white on every load. ui/Shell.tsx keeps it true after. */
+      (function () {
+        var saved = null
+        try {
+          saved = localStorage.getItem('theme')
+        } catch (e) {}
+        var night = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = night ? 'dark' : 'light'
+      })()
+    </script>
   </head>
   <body>
     <!--
@@ -16,8 +29,8 @@
     right-aligned; NEW entries unlit (ghost); status as margin hairline marks.
     STORY: Eddie opens his course book, sees exact counts of what he holds,
     scans the ledger, uncovers Spanish only when recall fails, edits status.
-    FIRST VIEWPORT: cobalt lesson rail left; Vocabulary spread right — counts
-    line, ruled search + status tabs, then the word ledger with margin marks.
+    FIRST VIEWPORT: paper rail with a cobalt spine, the lessons grouped by what
+    they do; on a phone, a five-place tab bar. See DESIGN.md, The Annotated Edition.
     FORM: Assimil workbook, candidate 4 of 7, seed 62149694 (code-led).
     FINISH: unreviewed and undocumented is unfinished; this build ends with the
     finish review, the verdict, DESIGN.md, and every shipping raster carrying

@@ -151,7 +151,7 @@ export default function ReviewPage() {
               {/* The three groups, named. "N left" hides that a learning card
                   comes back in this sitting while a review vanishes for days. */}
               {queue && (
-                <p className="tnum text-ghost mt-0.5 text-[11px]">
+                <p className="tnum text-ghost mt-0.5 text-xs">
                   {[
                     queue.new_available > 0 && `${fmt(queue.new_available)} new`,
                     queue.learning > 0 && `${fmt(queue.learning)} learning`,
@@ -188,10 +188,10 @@ export default function ReviewPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -16, opacity: 0 }}
               transition={SLIDE}
-              className="border-rule-strong border bg-white/70 px-6 py-10 text-center sm:px-10"
+              className="border-rule-strong border bg-surface/70 px-6 py-10 text-center sm:px-10"
             >
               {(card.is_new || card.comeback || queue?.ahead) && (
-                <p className="text-cobalt-deep mb-4 text-[10px] font-semibold tracking-[0.24em] uppercase">
+                <p className="text-cobalt-deep mb-4 text-xs font-semibold tracking-label uppercase">
                   {card.is_new
                     ? 'New entry'
                     : card.comeback
@@ -199,7 +199,7 @@ export default function ReviewPage() {
                       : 'Still learning — once more'}
                 </p>
               )}
-              <p className="font-book flex items-center justify-center gap-3 text-4xl font-semibold">
+              <p className="font-book flex items-center justify-center gap-3 text-3xl font-semibold">
                 {card.word}
                 <PlayButton
                   src={card.audio_word}
@@ -209,7 +209,7 @@ export default function ReviewPage() {
                 />
               </p>
               {card.pronunciation && (
-                <p className="text-ghost mt-2 text-[14px]">/{card.pronunciation}/</p>
+                <p className="text-ghost mt-2 text-sm">/{card.pronunciation}/</p>
               )}
 
               <AnimatePresence initial={false}>
@@ -227,10 +227,10 @@ export default function ReviewPage() {
                         </p>
                       )}
                       {card.meaning_en && (
-                        <p className="font-book text-ink-soft mt-2 text-[15px]">{card.meaning_en}</p>
+                        <p className="font-book text-ink-soft mt-2 text-base">{card.meaning_en}</p>
                       )}
                       {card.example_en && (
-                        <p className="font-book text-ink-soft mx-auto mt-3 flex max-w-[48ch] items-start justify-center gap-2 text-[15px] italic">
+                        <p className="font-book text-ink-soft mx-auto mt-3 flex max-w-[48ch] items-start justify-center gap-2 text-base italic">
                           <span>“{card.example_en}”</span>
                           <PlayButton
                             src={card.audio_example}
@@ -302,14 +302,14 @@ export default function ReviewPage() {
                 minutos mirando una pantalla vacía no enseña nada. Decirlo
                 evita que el número parezca una promesa rota. */}
             {queue?.ahead && queue.due === 0 && queue.new_available === 0 && !queue.brake?.on && (
-              <p className="font-book text-ghost mx-auto mt-4 max-w-[46ch] text-center text-[12px] italic">
+              <p className="font-book text-ghost mx-auto mt-4 max-w-[46ch] text-center text-xs italic">
                 Nothing else is due, so these keep coming back until they are
                 learned — the interval on each button is what gets scheduled,
                 not how long you wait.
               </p>
             )}
             {queue?.brake?.on && (
-              <p className="font-book text-ink-soft mx-auto mt-4 max-w-[48ch] text-center text-[12px] italic">
+              <p className="font-book text-ink-soft mx-auto mt-4 max-w-[48ch] text-center text-xs italic">
                 {queue.brake.note}{' '}
                 <button
                   onClick={() => api.keepGoing().then(load).catch(() => undefined)}
@@ -319,7 +319,7 @@ export default function ReviewPage() {
                 </button>
               </p>
             )}
-            <p className="tnum text-ghost mt-3 text-center text-[11px]">
+            <p className="tnum text-ghost mt-3 text-center text-xs">
               <button
                 onClick={() => setStopped(true)}
                 className="hover:text-ink-soft underline underline-offset-2 transition-colors"
@@ -422,10 +422,10 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={SLIDE}>
         <div className="border-cobalt/30 bg-cobalt-wash/50 border-l-2 py-4 pl-4">
-          <p className="text-cobalt-deep text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
             The course is paused
           </p>
-          <p className="font-book text-ink-soft mt-2 text-[15px]">
+          <p className="font-book text-ink-soft mt-2 text-base">
             Nothing is falling due and nothing new is being introduced. Resume from Today
             whenever you want the deck back.
           </p>
@@ -442,7 +442,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
       exit={{ opacity: 0 }}
       transition={SLIDE}
     >
-      <h3 className="text-[12px] font-semibold tracking-[0.18em] uppercase">
+      <h3 className="text-xs font-semibold tracking-label uppercase">
         {mode === 'auto'
           ? "Today's load"
           : mode === 'time'
@@ -459,7 +459,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
               key={String(v)}
               onClick={() => setLess(v)}
               aria-pressed={less === v}
-              className={`font-book text-[15px] transition-colors ${
+              className={`font-book text-base transition-colors ${
                 less === v
                   ? 'text-cobalt-deep border-cobalt border-b font-semibold'
                   : 'text-ink-soft hover:text-cobalt-deep'
@@ -475,7 +475,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
             <button
               key={m}
               onClick={() => setMinutes(m)}
-              className={`font-book text-[15px] transition-colors ${
+              className={`font-book text-base transition-colors ${
                 m === minutes
                   ? 'text-cobalt-deep border-cobalt border-b font-semibold'
                   : 'text-ink-soft hover:text-cobalt-deep'
@@ -496,7 +496,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
       <div className="border-rule mt-6 border-t pt-5">
         {plan ? (
           <>
-            <p className="tnum font-book text-[19px]">
+            <p className="tnum font-book text-lg">
               {nothing ? (
                 <span className="text-ink-soft italic">Nothing to study right now.</span>
               ) : (
@@ -516,7 +516,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
               )}
             </p>
             {plan.short.map((s, i) => (
-              <p key={i} className="font-book text-ghost mt-1 text-[13px] italic">
+              <p key={i} className="font-book text-ghost mt-1 text-sm italic">
                 {s}
               </p>
             ))}
@@ -524,30 +524,30 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
             {plan.why && plan.why.length > 0 && (
               <ul className="border-rule mt-3 max-w-[58ch] border-l pl-3">
                 {plan.why.map((w, i) => (
-                  <li key={i} className="font-book text-ghost text-[13px] leading-relaxed italic">
+                  <li key={i} className="font-book text-ghost text-sm leading-relaxed italic">
                     {w}
                   </li>
                 ))}
               </ul>
             )}
             {plan.mode === 'auto' && (plan.answered_today ?? 0) > 0 && (
-              <p className="font-book text-ink-soft mt-2 text-[13px] italic">
+              <p className="font-book text-ink-soft mt-2 text-sm italic">
                 {fmt(plan.answered_today ?? 0)} already answered today — this is what is left
                 of today's load, not a new one.
               </p>
             )}
             {plan.triage && plan.triage.later > 0 && (
-              <p className="font-book text-ghost mt-1 text-[13px] italic">
+              <p className="font-book text-ghost mt-1 text-sm italic">
                 {fmt(plan.triage.later)} more {plan.triage.later === 1 ? 'is' : 'are'} due — they
                 get scheduled over the next {fmt(Math.max(1, plan.triage.days))} day
                 {plan.triage.days > 1 ? 's' : ''}, best-remembered first.
               </p>
             )}
             {plan.pace.note && (
-              <p className="font-book text-ghost mt-1 text-[13px] italic">{plan.pace.note}</p>
+              <p className="font-book text-ghost mt-1 text-sm italic">{plan.pace.note}</p>
             )}
             {projection?.note && (
-              <p className="font-book text-correction mt-2 max-w-[58ch] text-[13px] italic">
+              <p className="font-book text-correction mt-2 max-w-[58ch] text-sm italic">
                 {projection.note}
                 {projection.reviews_per_word.measured
                   ? ` — your words have taken ${projection.reviews_per_word.value} reviews each so far.`
@@ -570,7 +570,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
             <button
               key={m}
               onClick={() => setMode(m)}
-              className="text-ghost hover:text-cobalt-deep text-[12px] transition-colors"
+              className="text-ghost hover:text-cobalt-deep text-xs transition-colors"
             >
               {m === 'auto'
                 ? 'propose it for me'
@@ -597,7 +597,7 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="text-ghost block text-[10px] font-semibold tracking-[0.2em] uppercase">
+      <span className="text-ghost block text-xs font-semibold tracking-label uppercase">
         {label}
       </span>
       <input
@@ -606,7 +606,7 @@ function NumberField({
         max={max}
         value={value}
         onChange={(e) => onChange(Math.max(0, Math.min(max, Number(e.target.value) || 0)))}
-        className="tnum border-rule focus:border-cobalt mt-1 w-24 border-b bg-transparent pb-1 text-[19px] outline-none"
+        className="tnum border-rule focus:border-cobalt mt-1 w-24 border-b bg-transparent pb-1 text-lg outline-none"
       />
     </label>
   )
@@ -648,11 +648,11 @@ function Cooling({
       transition={SLIDE}
       className="text-center"
     >
-      <p className="text-[10px] font-semibold tracking-[0.2em] uppercase">Taking a breath</p>
-      <p className="tnum mt-3 text-5xl font-extrabold tracking-tight">
+      <p className="text-xs font-semibold tracking-label uppercase">Taking a breath</p>
+      <p className="tnum mt-3 text-4xl font-semibold tracking-tight">
         {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}
       </p>
-      <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-[14px]">
+      <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-sm">
         {fmt(waiting)} word{waiting === 1 ? '' : 's'} still on the ladder. They come back on
         their own — answering one seconds after you just saw it does not prove you know it,
         it only teaches the scheduler that you do not.
@@ -726,14 +726,14 @@ function Finished({
       transition={SLIDE}
       className="text-center"
     >
-      <p className="text-[10px] font-semibold tracking-[0.2em] uppercase">Sitting complete</p>
-      <p className="tnum mt-3 text-5xl font-extrabold tracking-tight">{fmt(done)}</p>
-      <p className="font-book text-ink-soft mt-1 text-[15px]">
+      <p className="text-xs font-semibold tracking-label uppercase">Sitting complete</p>
+      <p className="tnum mt-3 text-4xl font-semibold tracking-tight">{fmt(done)}</p>
+      <p className="font-book text-ink-soft mt-1 text-base">
         {fmt(session.done_new ?? 0)} new · {fmt(session.done_reviews ?? 0)} reviewed
       </p>
 
       {brake?.on && (
-        <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-[13px] italic">
+        <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-sm italic">
           Stopped early on purpose: {fmt(brake.again)} of {fmt(brake.reviews)} slipped, and
           what was left was harder still. It is kept for a day it can stick.
         </p>
@@ -741,14 +741,14 @@ function Finished({
 
       {spread?.spread ? (
         <>
-          <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-[13px] italic">
+          <p className="font-book text-ink-soft mx-auto mt-4 max-w-[46ch] text-sm italic">
             More was due than fits in a day, so {fmt(spread.cards ?? 0)} cards were spread
             over the next {fmt(spread.days ?? 0)} day{spread.days === 1 ? '' : 's'}. You will
             see them a little later than the schedule wanted — that is the price of not
             meeting a wall.
           </p>
           {spread.over_capacity && (
-            <p className="font-book text-correction mx-auto mt-2 max-w-[46ch] text-[13px] italic">
+            <p className="font-book text-correction mx-auto mt-2 max-w-[46ch] text-sm italic">
               Even spread out, that is about {fmt(spread.per_day ?? 0)} a day — more than
               the {fmt(spread.capacity ?? 0)} you planned for. Either sit for longer, or
               pause new words until this drains.
@@ -758,7 +758,7 @@ function Finished({
       ) : (
         left > 0 &&
         !brake?.on && (
-          <p className="font-book text-ghost mx-auto mt-4 max-w-[42ch] text-[13px] italic">
+          <p className="font-book text-ghost mx-auto mt-4 max-w-[42ch] text-sm italic">
             {fmt(left)} still due today. They are not going anywhere — start another
             sitting if you feel like it.
           </p>
@@ -778,14 +778,14 @@ function Finished({
           <button
             onClick={studyMore}
             disabled={pulling}
-            className="text-ghost hover:text-ink-soft text-[13px] underline underline-offset-2 transition-colors disabled:opacity-50"
+            className="text-ghost hover:text-ink-soft text-sm underline underline-offset-2 transition-colors disabled:opacity-50"
           >
             Study 20 more
           </button>
         )}
       </div>
       {noMore && (
-        <p className="font-book text-ghost mt-3 text-[13px] italic">
+        <p className="font-book text-ghost mt-3 text-sm italic">
           Nothing else is scheduled for the next two weeks.
         </p>
       )}
@@ -831,7 +831,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
   /* `session.end` itself could not ask — worth saying plainly. */
   if (material?.error)
     return (
-      <p className="font-book text-correction mx-auto mt-6 max-w-[46ch] text-[13px] italic">
+      <p className="font-book text-correction mx-auto mt-6 max-w-[46ch] text-sm italic">
         Today's material could not be requested. It will be waiting on the shelf once the
         coach is back.
       </p>
@@ -845,7 +845,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
   if (failed.length > 0 && working.length === 0)
     return (
       <div className="mx-auto mt-6 max-w-[46ch]">
-        <p className="font-book text-correction text-[13px] italic">
+        <p className="font-book text-correction text-sm italic">
           {describeError(
             failed[0].error,
             'The coach could not write today\u2019s material.',
@@ -864,7 +864,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
             Ask again
           </Button>
         )}
-        {retried && <p className="text-ghost mt-2 text-[11px]">Asked again.</p>}
+        {retried && <p className="text-ghost mt-2 text-xs">Asked again.</p>}
       </div>
     )
 
@@ -873,7 +873,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
       <p
         role="status"
         aria-live="polite"
-        className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-[13px] italic"
+        className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-sm italic"
       >
         Your reading, drill and message are being written — one at a time, so the laptop
         stays cool. You can close this and they will be waiting.
@@ -881,7 +881,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
     )
 
   return (
-    <p className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-[13px] italic">
+    <p className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-sm italic">
       Today\u2019s reading, drill and message are ready.
     </p>
   )
@@ -921,7 +921,7 @@ function RateButton({
           property of the choice, not a caption on the result. It says when
           the card comes back, never how long you have been studying it. */}
       <span
-        className={`tnum text-[11px] ${
+        className={`tnum text-xs ${
           outcome ? 'text-ghost' : 'text-transparent'
         }`}
         aria-hidden={!outcome}
@@ -932,15 +932,15 @@ function RateButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={outcome ? `${label} — next in ${outcome.interval}` : label}
-        className={`rounded-sm border px-4 py-2 text-[12px] font-semibold tracking-[0.12em] uppercase transition-colors disabled:opacity-40 ${styles}`}
+        className={`rounded-sm border px-4 py-2 text-xs font-semibold tracking-label uppercase transition-colors disabled:opacity-40 ${styles}`}
       >
         {label}
-        <span className="tnum text-ghost ml-1.5 text-[10px]">{hint}</span>
+        <span className="tnum text-ghost ml-1.5 text-xs">{hint}</span>
       </button>
       {/* Graduation is worth naming: it is the card leaving the minutes
           behind for good. */}
       <span
-        className={`text-[9px] font-semibold tracking-[0.14em] uppercase ${
+        className={`text-xs font-semibold tracking-label uppercase ${
           outcome?.graduates ? 'text-cobalt-deep' : 'text-transparent'
         }`}
         aria-hidden={!outcome?.graduates}

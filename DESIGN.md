@@ -1,55 +1,69 @@
 # DESIGN.md — English OS visual system
 
-> Recorded from the built world (M1, 2026-08-20). Direction: **The Assimil
-> Workbook** — seed 62149694, chosen by Eddie on the decision page. Source of
-> truth for tokens: `frontend/src/index.css` `@theme`.
+> Recorded from the built world (M1, 2026-08-20). Direction: **The Annotated
+> Edition** (M24, 2026-11-02), grown from **The Assimil Workbook** (seed
+> 62149694). Source of truth for tokens: `frontend/src/index.css` `@theme`.
 
 ## World
 
-A mid-century European self-study language course, rendered as an app. The
-screen is an open workbook page; the navigation is the course's cobalt cover
-spine. The Spanish column exists but stays covered until asked (the Assimil
-ritual, and Vision principle P1). It must never read as a SaaS dashboard.
+A finely printed self-study course you work in: the mid-century European
+language book, still, but a good edition of it. The screen is an open page; the
+course's cobalt cover shrinks to the spine at its edge, and cobalt otherwise
+lives in the page as ink. The Spanish column exists but stays covered until
+asked (the Assimil ritual, and Vision principle P1). It must never read as a
+SaaS dashboard.
 
 ## Tokens
 
-| Token | Value | Role |
-|---|---|---|
-| `--color-paper` | `#FBFAF7` | ground (near-white paper — NOT cream) |
-| `--color-ink` | `#16181C` | primary text |
-| `--color-ink-soft` | `#4C4A44` | secondary text |
-| `--color-ghost` | `#8F8C83` | tertiary/labels; ghosted NEW entries |
-| `--color-rule` | `#E4E1D6` | hairline rules between entries |
-| `--color-rule-strong` | `#C9C5B6` | search underline, NEW dashed mark |
-| `--color-cobalt` | `#0A52C4` | structural: spine, active states, marks |
-| `--color-cobalt-deep` | `#08409A` | cobalt text on paper |
-| `--color-cobalt-wash` | `#EEF3FC` | hover wash |
-| `--color-correction` | `#C6402D` | errors/"again" only — never decorative |
+| Token | Day | Night | Role |
+|---|---|---|---|
+| `--color-paper` | `#FBFAF7` | `#15161A` | ground (near-white paper, warm charcoal — NOT cream, NOT black) |
+| `--color-surface` | `#FFFFFF` | `#1E2025` | a sheet on the page: flashcard, dictionary slip |
+| `--color-ink` | `#16181C` | `#ECE9E1` | primary text |
+| `--color-ink-soft` | `#4C4A44` | `#BDB9AE` | secondary text |
+| `--color-ghost` | `#6F6C63` | `#96928A` | tertiary/labels; ghosted NEW entries. ≥4.7:1 on every ground, so it can carry words you must read |
+| `--color-rule` | `#E4E1D6` | `#2C2E34` | hairline rules between entries |
+| `--color-rule-strong` | `#C9C5B6` | `#44474F` | search underline, NEW dashed mark |
+| `--color-cobalt` | `#0A52C4` | `#8AB0F5` | structural: spine, active states, marks |
+| `--color-cobalt-deep` | `#08409A` | `#A9C5F8` | cobalt text on paper |
+| `--color-cobalt-wash` | `#EEF3FC` | `#1C2740` | hover wash |
+| `--color-correction` | `#C6402D` | `#F08A78` | errors/"again" only — never decorative |
 
-Light mode only, by scene: morning study at a desk on a Mac.
+Two themes, by scene: **Day** for the morning at the desk, **Night** ("Lamplight")
+for reading in bed on a phone. **Auto** follows the system. Components never name
+a colour: `bg-cobalt text-paper` inverts by itself at night.
 
 ## Type
 
-- `--font-book` **Source Serif 4 Variable** (fallback Charter/Georgia): the
-  book voice — words, meanings, examples (italic), empty-state prose.
-- `--font-ui` **Archivo Variable**: the apparatus — headings, labels, nav,
-  numbers. Tracked uppercase at 10–13px for labels; extrabold tight for H1/H2.
+- `--font-book` **Source Serif 4 Variable**, opsz builds (fallback
+  Charter/Georgia): the book voice — words, meanings, examples (real italic),
+  empty-state prose, and now **every masthead**. The optical axis draws a title
+  with display letterforms and a sentence with text ones.
+- `--font-ui` **Archivo Variable**: the apparatus — labels, nav, numbers, buttons.
+  Never above weight 700; figures use 600.
+- **The scale is the only sizes there are**: `text-xs` 12 · `sm` 14 · `base` 16 ·
+  `lg` 18 · `xl` 22 · `2xl` 28 · `3xl` 36 · `4xl` 48. No raw `text-[..px]` in a
+  component, nothing below 12. Uppercase labels are `text-xs` + `tracking-label`
+  (0.08em), one tracking for all of them.
 - `font-feature-settings: 'tnum'` globally; counts use `.tnum`.
 
 ## Committed rules
 
 1. **Cobalt is structural, never decorative** — the spine, the active tab
-   rule, status marks, the ES cover chip. It owns whole regions (the rail).
+   rule, status marks, the ES cover chip. It no longer owns whole regions: at
+   this reading distance a cobalt wall is the loudest thing on the page.
 2. **Status is margin ink that dries with mastery**: NEW = 1px dashed ghost
    rule + entry at 55% opacity ("unlit"); LEARNING = 2px solid cobalt;
    FAMILIAR = 2px cobalt at 35%; MASTERED = no mark. (The 2px marks are a
    deliberate world commitment — an exception to the generic side-stripe ban.)
 3. **Exact counts, right-aligned** like hand-timed tracklists; never rounded,
    never progress rings.
-4. **One motion law**: everything slides along its column axis,
-   `{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }` (`SLIDE` in
-   VocabularyPage.tsx) — row expansion vertical, ES uncover horizontal,
-   tab rule via layoutId. No scattered hover effects.
+4. **One motion law, three speeds**: things slide along their column axis on
+   the ease `[0.16, 1, 0.3, 1]`, at 120 ms (a touch answered), 200 ms (`SLIDE`,
+   opening in place) or 280 ms (arriving from outside) — `ui/motion.ts`. What
+   repeats most moves least: navigating only fades, for 120 ms, in CSS so a busy
+   main thread cannot leave the page half-visible. Pressables take
+   `.press` (scale 0.97, off under reduced motion). No scattered hover effects.
 5. **Spanish only on demand**: `lang="es"` content renders behind an
    "Uncover Spanish" dashed chip; uncovered ES is cobalt-deep serif.
 6. **Rules, not cards**: content separates with 1px `--color-rule` lines and
@@ -59,14 +73,12 @@ Light mode only, by scene: morning study at a desk on a Mac.
 8. **Browser surfaces themed**: selection cobalt/paper, caret cobalt, focus
    ring 2px cobalt, scrollbar rule-strong on paper.
 9. **UI chrome in English**; correction red reserved for real errors.
-10. Nav modules are **numbered lessons** (01–06 = the course roadmap M-order);
-    unavailable lessons sit at 45% opacity, never hidden.
+10. Nav modules are **numbered lessons** in the order a day runs (01 Today →
+    10 Stats), in five groups that are the same on every screen.
 
 ## Components in the wild
 
-- **Spine** (`App.tsx`): cobalt rail, wordmark + "The self-study method"
-  subtitle, lesson list; active lesson = paper bookmark tab (rounded-r-none,
-  bleeds into the page on lg). Mobile: compact cobalt top bar.
+- **Rail and tab bar** (`ui/Shell.tsx`): see The Annotated Edition, below.
 - **Ledger entry** (`WordEntry.tsx`): margin mark, tabular index, serif word,
   ghost IPA, kind label (small caps cobalt), right SRS readout. Expands to:
   meaning/example (68ch max), ES cover, instrument readouts (dt ghost /
@@ -166,9 +178,6 @@ rule in book voice, then the ✗/✓ minimal pair, then the hook in italic.
 with a 3-column stat row, then **Tenses you used** — the analysis Eddie asked
 for — as cobalt facts plus a ✓/✗ note on the day's focus, then corrections in
 the shared ✗/✓ grammar, the B2 rewrite, and Strength/Practice.
-
-Eight lessons no longer fit a narrow top bar: below `lg` the rail scrolls
-horizontally (`overflow-x-auto`, `shrink-0` items) and drops the numbers.
 
 ## Sentence explanations & the archive (M10, built)
 
@@ -439,7 +448,7 @@ never imports from another page.
 | Piece | File | What it settles |
 |---|---|---|
 | `Page` | `ui/Page.tsx` | Three measures with names: `study` (2xl — Review, Practice, Writing, Speaking, Shadowing, Podcast, Reader), `evidence` (3xl — Today, Stats), `ledger` (4xl — Vocabulary, Reading). The outer margin reads the same on every lesson. |
-| `PageHeader` | `ui/Page.tsx` | The masthead: optional overline, H2 (4xl extrabold, or 3xl serif with `serif` when the title is a text's own), optional subtitle, and the right-aligned tabular `meta` — counts, never a second heading. |
+| `PageHeader` | `ui/Page.tsx` | The masthead: optional overline, H2 in the book voice at `3xl`, optional subtitle, and the right-aligned tabular `meta` — counts, never a second heading. |
 | `Section` | `ui/Page.tsx` | Rules, not cards (rule 6): `border-t` hairline, `mt-8 pt-6`, optional uppercase label. |
 | `Button` / `ButtonLink` | `ui/Button.tsx` | One family: `primary` (cobalt fill), `secondary` (ruled), `danger` (correction outline, reserved), `text` (a word in the margin, tone `ghost` / `cobalt` / `correction`). Sizes `sm` and `md`. A destination renders as `ButtonLink`, so it keeps its URL. |
 | `Choice` | `ui/Choice.tsx` | The answer row of the drill and the reading quiz: `idle` / `chosen` / `correct` / `wrong` / `muted`, with the letter drawn once. Multiple choice is the interaction this product leans on. |
@@ -455,6 +464,35 @@ of the four intervals, the tappable words and the ¶ of the reader, the
 "Uncover Spanish" dashed chip, the status radios of the ledger, the player
 control rows (their words are underlined choices, not buttons), the row that
 is clickable in its entirety, and the hover "DELETE".
+
+## The Annotated Edition (M24, built)
+
+The workbook had the right bones and the wrong volume. A 240 px cobalt wall and
+extrabold grotesque mastheads shouted over a product whose job is quiet reading,
+and on a phone the ten lessons were a strip showing three, with Review off-screen.
+So the bones stay (paper, rules, status ink, the covered Spanish, honest numbers)
+and the volume comes down.
+
+**The rail** (`Shell.tsx`) is paper with a 6 px cobalt spine at its edge, and it
+stays in reach on long pages. The lesson you have open gets **the ribbon**: a
+short cobalt mark coming out of the spine, like the marker in a bound book. The
+lessons sit in the order a day runs and in three named groups: *Take in*, *Put to
+use*, *Your record*. On Review and the Reader it folds to **its numerals** (with
+each name on hover and for screen readers): the numbers are this world's own
+mark, and an icon rail would be anyone's. Collapsing is a saved choice elsewhere,
+and a passing look on those two. It is a cut, not an animation: animating width
+reflows the page every frame.
+
+**The tab bar** is the rail's five groups, named, in thumb reach: Today · Review ·
+Read · Practice · More, 56 px tall, above the safe area. A group with several
+lessons shows them as a section bar at the top of its pages, and the tab bar's
+own rule marks where you are. Not one of the five is a scrolling list.
+
+Below `lg` there is no wordmark, because a phone screen has none to spare. The
+theme control sits in the rail's foot and, on a phone, in *More*.
+
+The 2 px margin marks, the spine and the ribbon are the world's deliberate
+exceptions to the generic side-stripe ban (rule 2).
 
 ## Extending
 

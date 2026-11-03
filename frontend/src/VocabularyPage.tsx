@@ -100,7 +100,7 @@ export default function VocabularyPage() {
             value={query}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Search word or meaning…"
-            className="placeholder:text-ghost w-full bg-transparent text-[15px] outline-none"
+            className="placeholder:text-ghost w-full bg-transparent text-base outline-none"
           />
         </label>
 
@@ -116,7 +116,7 @@ export default function VocabularyPage() {
                   setOpenId(null)
                 }}
                 aria-pressed={active}
-                className={`relative pb-1.5 text-[13px] font-semibold tracking-wide uppercase transition-colors ${
+                className={`tracking-label pointer-coarse:py-3 relative pb-1.5 text-xs font-semibold uppercase transition-colors ${
                   active ? 'text-cobalt-deep' : 'text-ghost hover:text-ink-soft'
                 }`}
               >
@@ -168,7 +168,7 @@ export default function VocabularyPage() {
 
       {/* Folio */}
       {data && data.total > PER_PAGE && (
-        <footer className="tnum mt-8 flex items-center justify-center gap-6 text-[13px]">
+        <footer className="tnum mt-8 flex items-center justify-center gap-6 text-sm">
           <Button
             variant="text"
             tone="cobalt"
@@ -213,11 +213,11 @@ function StudiedToday() {
   return (
     <section className="mt-8">
       <div className="border-rule-strong flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b pb-1.5">
-        <h3 className="text-[12px] font-semibold tracking-[0.18em] uppercase">
+        <h3 className="text-xs font-semibold tracking-label uppercase">
           Studied today
         </h3>
         <div className="flex items-baseline gap-4">
-          <p className="tnum text-ghost text-[12px]">
+          <p className="tnum text-ghost text-xs">
             {fmt(data.total)} word{data.total === 1 ? '' : 's'}
             {data.introduced > 0 && ` · ${fmt(data.introduced)} new`}
             {data.struggled > 0 && (
@@ -226,7 +226,7 @@ function StudiedToday() {
           </p>
           <button
             onClick={() => setOpen(!open)}
-            className="text-ghost hover:text-cobalt-deep text-[11px] transition-colors"
+            className="text-ghost hover:text-cobalt-deep text-xs transition-colors"
           >
             {open ? 'hide' : 'show'}
           </button>
@@ -239,7 +239,7 @@ function StudiedToday() {
             <li key={w.id}>
               <span
                 title={`${w.meaning_es ?? ''}${w.times > 1 ? ` · seen ${w.times}×` : ''}`}
-                className={`font-book inline-flex items-baseline gap-1.5 rounded-sm border px-2.5 py-1 text-[14px] ${
+                className={`font-book inline-flex items-baseline gap-1.5 rounded-sm border px-2.5 py-1 text-sm ${
                   w.worst_rating === 1
                     ? 'border-correction/50 text-correction'
                     : 'border-rule text-ink-soft'
@@ -247,7 +247,7 @@ function StudiedToday() {
               >
                 {w.word}
                 {w.times > 1 && (
-                  <span className="tnum text-ghost text-[10px]">×{fmt(w.times)}</span>
+                  <span className="tnum text-ghost text-xs">×{fmt(w.times)}</span>
                 )}
               </span>
             </li>
@@ -256,7 +256,7 @@ function StudiedToday() {
       )}
 
       {open && data.struggled > 0 && (
-        <p className="font-book text-ghost mt-3 max-w-[68ch] text-[13px] italic">
+        <p className="font-book text-ghost mt-3 max-w-[68ch] text-sm italic">
           The ones in red came back more than once today — those are the ones
           worth meeting again in a reading or an activity, not just another card.
         </p>

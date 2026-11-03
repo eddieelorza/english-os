@@ -42,31 +42,24 @@ export function PageHeader({
   title,
   subtitle,
   meta,
-  serif = false,
 }: {
   overline?: ReactNode
   title: ReactNode
   subtitle?: ReactNode
   meta?: ReactNode
-  /** A text's own title speaks in the book voice; a lesson name does not. */
-  serif?: boolean
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
       <div className="min-w-0">
         {overline && (
-          <p className="text-ghost text-[11px] font-semibold tracking-[0.16em] uppercase">
+          <p className="text-ghost text-xs font-semibold tracking-label uppercase">
             {overline}
           </p>
         )}
-        {serif ? (
-          <h2 className="font-book mt-1 text-3xl leading-tight font-semibold">{title}</h2>
-        ) : (
-          <h2 className="mt-1 text-4xl font-extrabold tracking-tight">{title}</h2>
-        )}
-        {subtitle && <div className="font-book text-ink-soft mt-2 text-[14px]">{subtitle}</div>}
+        <h2 className="font-book mt-1 text-3xl font-semibold tracking-tight">{title}</h2>
+        {subtitle && <div className="font-book text-ink-soft mt-2 text-sm">{subtitle}</div>}
       </div>
-      {meta && <div className="text-ink-soft shrink-0 text-right text-[13px]">{meta}</div>}
+      {meta && <div className="text-ink-soft shrink-0 text-right text-sm">{meta}</div>}
     </div>
   )
 }
@@ -88,9 +81,9 @@ export function Section({
       {(label || right) && (
         <div className="mb-4 flex items-baseline justify-between gap-4">
           {label && (
-            <h3 className="text-[11px] font-semibold tracking-[0.16em] uppercase">{label}</h3>
+            <h3 className="text-xs font-semibold tracking-label uppercase">{label}</h3>
           )}
-          {right && <span className="text-ghost text-[12px]">{right}</span>}
+          {right && <span className="text-ghost text-xs">{right}</span>}
         </div>
       )}
       {children}

@@ -28,11 +28,11 @@ export function Choice({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`font-book block w-full rounded-sm border px-3.5 py-2.5 text-left text-[15px] transition-colors ${STATE[state]} ${className}`}
+      className={`press font-book block w-full rounded-sm border px-3.5 py-2.5 text-left text-base [--press:0.99] ${STATE[state]} ${className}`}
       {...rest}
     >
       {letter && (
-        <span className="font-ui text-ghost mr-2.5 text-[11px] font-semibold">{letter}</span>
+        <span className="font-ui text-ghost mr-2.5 text-xs font-semibold">{letter}</span>
       )}
       {children}
     </button>

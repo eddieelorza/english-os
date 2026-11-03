@@ -72,12 +72,12 @@ export default function ChatGPTPrompt({ mode }: { mode: Mode }) {
   return (
     <Section label={MODES[mode].label}>
       {words.length === 0 ? (
-        <p className="font-book text-ink-soft mt-2 text-[14px] italic">
+        <p className="font-book text-ink-soft mt-2 text-sm italic">
           No words studied today yet — do a Review session first.
         </p>
       ) : (
         <>
-          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-[14px]">
+          <p className="font-book text-ink-soft mt-2 max-w-[64ch] text-sm">
             A prompt with today's {Math.min(words.length, MAX_WORDS)} words — runs in ChatGPT, not on
             this computer. {MODES[mode].hint}
           </p>
@@ -89,14 +89,14 @@ export default function ChatGPTPrompt({ mode }: { mode: Mode }) {
               href="https://chatgpt.com/"
               target="_blank"
               rel="noreferrer"
-              className="text-cobalt-deep hover:text-cobalt text-[11px] font-semibold tracking-[0.14em] uppercase"
+              className="text-cobalt-deep hover:text-cobalt text-xs font-semibold tracking-label uppercase"
             >
               Open ChatGPT ↗
             </a>
           </div>
           <details className="mt-3">
-            <summary className="text-ghost cursor-pointer text-[12px]">See prompt</summary>
-            <pre className="font-ui text-ink-soft mt-2 text-[12px] whitespace-pre-wrap">{prompt}</pre>
+            <summary className="text-ghost cursor-pointer text-xs">See prompt</summary>
+            <pre className="font-ui text-ink-soft mt-2 text-xs whitespace-pre-wrap">{prompt}</pre>
           </details>
         </>
       )}

@@ -5,21 +5,21 @@ import { Link } from 'react-router-dom'
    different solid primaries; the shape of an action never told you what it
    did. Three families now — solid, ruled, bare — plus one reserved danger
    outline for the correction red. */
-const BASE = 'font-semibold uppercase transition-colors disabled:cursor-default'
+const BASE = 'press font-semibold uppercase disabled:cursor-default pointer-coarse:min-h-11'
 
 const VARIANT = {
   primary:
-    'bg-cobalt text-paper hover:bg-cobalt-deep rounded-sm tracking-[0.14em] disabled:opacity-40',
+    'bg-cobalt text-paper hover:bg-cobalt-deep rounded-sm tracking-label disabled:opacity-40',
   secondary:
-    'border border-rule-strong text-ink-soft hover:border-cobalt/50 hover:text-cobalt-deep rounded-sm tracking-[0.14em] disabled:opacity-40',
+    'border border-rule-strong text-ink-soft hover:border-cobalt/50 hover:text-cobalt-deep rounded-sm tracking-label disabled:opacity-40',
   danger:
-    'border border-correction text-correction hover:bg-correction/5 rounded-sm tracking-[0.14em] disabled:opacity-40',
+    'border border-correction text-correction hover:bg-correction/5 rounded-sm tracking-label disabled:opacity-40',
   /* The apparatus voice: a word in the margin, not a control with a box. */
-  text: 'tracking-[0.14em] disabled:opacity-30',
+  text: 'tracking-label disabled:opacity-30',
 } as const
 
 const PADDING = { sm: 'px-4 py-1.5', md: 'px-5 py-2' } as const
-const SIZE = { sm: 'text-[11px]', md: 'text-[12px]' } as const
+const SIZE = { sm: 'text-xs', md: 'text-sm' } as const
 
 /* Bare buttons carry the tone instead of a fill. */
 const TONE = {
@@ -76,7 +76,11 @@ export function ButtonLink({
   ...rest
 }: Common & { to: string } & Omit<React.ComponentProps<typeof Link>, 'to' | 'className'>) {
   return (
-    <Link to={to} className={`inline-block ${classes({ variant, size, tone, className })}`} {...rest}>
+    <Link
+      to={to}
+      className={`inline-flex items-center justify-center ${classes({ variant, size, tone, className })}`}
+      {...rest}
+    >
       {children}
     </Link>
   )
