@@ -12,7 +12,7 @@ PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LABEL="com.eddieelorza.englishos"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 APP="$HOME/Applications/English OS.app"
-PORT=8770
+PORT=8771
 
 if [[ "${1:-install}" == "uninstall" ]]; then
   launchctl bootout "gui/$UID/$LABEL" 2>/dev/null || true

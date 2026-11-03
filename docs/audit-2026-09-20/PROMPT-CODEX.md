@@ -15,7 +15,7 @@ Después, mejoras pequeñas:
 - Reproduce en un entorno ficticio el fallo de guardado de ComprehensionQuiz; si se confirma, elimina el catch silencioso y añade estado visible y reintento sin duplicados.
 - Aclara qué cubre el tiempo estimado del repaso, sin alterar FSRS por razones cosméticas.
 
-Seguridad de la prueba: usa base y rutas temporales NUEVAS, proveedor de IA determinista y trabajadores/exportaciones aislados. No abras ni escribas data/english.db, no uses el puerto de producción 8770, no ejecutes morning/reset/sync-used y no modifiques Anki, Notion ni el vault real. El servidor ficticio anterior puede estar apagado: crea tu propio entorno reproducible. No hagas commits automáticos.
+Seguridad de la prueba: usa base y rutas temporales NUEVAS, proveedor de IA determinista y trabajadores/exportaciones aislados. No abras ni escribas data/english.db, no uses el puerto de producción 8771, no ejecutes morning/reset/sync-used y no modifiques Anki, Notion ni el vault real. El servidor ficticio anterior puede estar apagado: crea tu propio entorno reproducible. No hagas commits automáticos.
 
 Validación mínima: traducción inválida; timeout del corrector; sesión parcialmente evaluada; reintento de corrección y guardado; navegación y recarga con borrador; historial actualizado; regresión del camino normal; fallo de guardado de quiz. Prueba estados visibles en navegador además de pruebas de contrato/persistencia. Verifica que textos pendientes no mejoran artificialmente la precisión al alcanzar la muestra mínima. Comprueba teclado y foco del feedback; no declares accesibilidad completa sin medirla.
 

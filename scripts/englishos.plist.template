@@ -16,7 +16,7 @@
     <string>--host</string>
     <string>127.0.0.1</string>
     <string>--port</string>
-    <string>8770</string>
+    <string>8771</string>
   </array>
 
   <key>WorkingDirectory</key>

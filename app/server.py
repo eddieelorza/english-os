@@ -3,7 +3,7 @@
 FastAPI over data/english.db. Read path of the app: everything is served from
 SQLite (never Notion — ADR-006 rule). Run with:
 
-    .venv/bin/uvicorn app.server:app --reload --port 8770
+    .venv/bin/uvicorn app.server:app --reload --port 8771
 
 The dev frontend (Vite, port 5173) proxies /api to this server.
 """

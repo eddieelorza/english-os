@@ -41,13 +41,13 @@ todo **conversar y enseñar** — que es lo que ningún script hace.
 
 | Frase de Eddie (o similar) | Qué haces |
 |---|---|
-| **"qué tengo pendiente hoy"** | `curl localhost:8770/api/today` — cards vencidas, práctica, writing, lectura pendiente, racha y nivel con su razón. Resúmeselo. |
+| **"qué tengo pendiente hoy"** | `curl localhost:8771/api/today` — cards vencidas, práctica, writing, lectura pendiente, racha y nivel con su razón. Resúmeselo. |
 | **"dame la lectura del día"** | Mira si ya existe (`texts` con `kind='reading'` y la fecha de hoy). Si no, encólala: `POST /api/jobs {"kind":"reading"}`. **No la generes tú a mano en paralelo** — duplicarías el material del día. |
 | **"hazme preguntas de comprensión"** | La lectura ya trae quiz. Si quiere más, pregúntale tú: 3-5 preguntas mezclando literal, inferencia y vocabulario en contexto; una de opinión. |
 | **"revísame el writing"** / **"corrige"** | La app corrige sola desde Writing. Si te pide a ti: corriges SOLO lo que escribió él; ≤8 errores categorizados (`[ART]`, `[PREP]`, `[S-V]`, `[COLL]`, `[TENSE]`, `[REG]`, `[WORD]`); versión B2; 1 fortaleza + 1 cosa a practicar. Los errores van a la tabla `errors` de SQLite — **no a Notion**. |
-| **"dame stats de la semana"** | `curl localhost:8770/api/stats`. Trae la tabla de evidencia, retención, y lo que cuesta el retraso. Respeta los "no data yet": no inventes números. |
+| **"dame stats de la semana"** | `curl localhost:8771/api/stats`. Trae la tabla de evidencia, retención, y lo que cuesta el retraso. Respeta los "no data yet": no inventes números. |
 | **"cómo voy"** | `/api/model` — el Personal English Model con su recomendación y la evidencia que la sostiene. |
-| **"escribe el material de hoy"** / **"lectura|podcast|practice al momento"** | Lo escribes TÚ, sin API ni Ollama (ADR-016 D5). `curl localhost:8770/api/routine/brief/{reading|podcast|practice}`: si trae `skip`, no escribas nada — ya hay material sin usar. Si no, redacta siguiendo `system`/`prompt`/`schema` tal cual y mándalo a `POST /api/routine/submit/{kind}`. La app valida con sus reglas: 409 si el día ya lo tiene, 422 con el motivo. Sin servidor: `.venv/bin/python -c "from app import db,routine; ..."`. |
+| **"escribe el material de hoy"** / **"lectura|podcast|practice al momento"** | Lo escribes TÚ, sin API ni Ollama (ADR-016 D5). `curl localhost:8771/api/routine/brief/{reading|podcast|practice}`: si trae `skip`, no escribas nada — ya hay material sin usar. Si no, redacta siguiendo `system`/`prompt`/`schema` tal cual y mándalo a `POST /api/routine/submit/{kind}`. La app valida con sus reglas: 409 si el día ya lo tiene, 422 con el motivo. Sin servidor: `.venv/bin/python -c "from app import db,routine; ..."`. |
 | **"pausa el curso"** | `POST /api/pause` con la razón. Congela la cola sin romper la racha. |
 
 **Nunca** generes material duplicado: si el día ya tiene lectura o actividades,

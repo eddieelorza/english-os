@@ -115,7 +115,7 @@ the app works fully offline with just the two lines above. See
 bash scripts/dev.sh
 ```
 
-This starts FastAPI on `:8770` and Vite on `:5173`. Open
+This starts FastAPI on `:8771` and Vite on `:5173`. Open
 **http://localhost:5173**.
 
 The database (`data/english.db`) is created empty on first run — there's no
@@ -131,7 +131,7 @@ scripts/install_app.sh
 
 Installs a `launchd` agent that starts the app on login and adds an icon to
 `~/Applications` you can drag to the Dock. The app is only reachable at
-`127.0.0.1:8770` — never exposed to your network. Uninstall with
+`127.0.0.1:8771` — never exposed to your network. Uninstall with
 `scripts/install_app.sh uninstall`.
 
 ## Project structure

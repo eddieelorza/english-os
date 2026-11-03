@@ -60,7 +60,7 @@ AI_PROVIDER=anthropic ANTHROPIC_API_KEY= ANTHROPIC_CONFIG_DIR=/nonexistent \
 ```
 
 - El puerto 8771 sirve `frontend/dist` contra la **copia**. No uses Vite
-  (5173): su proxy apunta a 8770, que es la base real.
+  (5173): su proxy apunta a 8771, que es la base real.
 - `AI_PROVIDER=anthropic` sin credenciales hace que la IA falle al instante,
   sin cargar el modelo. Así la RAM no explota y, de paso, ves los estados de
   "IA no disponible". El contenido ya generado se lee de la copia.
