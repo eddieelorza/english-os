@@ -1212,13 +1212,20 @@ def spa(full_path: str) -> FileResponse:
         raise HTTPException(
             503, "frontend sin compilar — corre `npm run build --prefix frontend`")
 
-    index = DIST / "index.html"
+    # El index siempre se revalida: es lo único sin hash en el nombre. Sin
+    # cabecera el navegador lo da por fresco durante días y sigue pidiendo los
+    # assets del build anterior.
+    index = FileResponse(DIST / "index.html", headers={"Cache-Control": "no-cache"})
     if not full_path:
-        return FileResponse(index)
+        return index
 
     # `resolve()` antes de comparar: sin esta guarda, una ruta con .. serviría
     # cualquier archivo del disco. El comodín es exactamente donde eso entra.
     candidate = (DIST / full_path).resolve()
-    if candidate.is_file() and candidate.is_relative_to(DIST.resolve()):
+    if (
+        candidate.is_file()
+        and candidate.is_relative_to(DIST.resolve())
+        and candidate.name != "index.html"
+    ):
         return FileResponse(candidate)
-    return FileResponse(index)
+    return index

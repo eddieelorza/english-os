@@ -59,6 +59,13 @@ class TestServesTheApp(unittest.TestCase):
                 self.assertEqual(r.status_code, 200)
                 self.assertIn("text/html", r.headers["content-type"])
 
+    def test_the_page_is_always_revalidated(self):
+        """Sin esto el navegador se queda días con el index anterior, que
+        apunta a los assets anteriores: cada build parecía no haber hecho nada."""
+        for path in ("/", "/review", "/index.html"):
+            with self.subTest(path=path):
+                self.assertEqual(self.c.get(path).headers.get("cache-control"), "no-cache")
+
     def test_real_assets_are_served_as_themselves(self):
         asset = next((DIST_ASSETS := server.DIST / "assets").iterdir())
         r = self.c.get(f"/assets/{asset.name}")
