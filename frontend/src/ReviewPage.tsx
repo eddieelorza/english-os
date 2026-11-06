@@ -28,12 +28,13 @@ import {
   SLIDE,
   describeError,
   fmt,
+  useFocusMode,
 } from './ui'
 
 const MINUTES = [10, 20, 30]
 
 /* Lesson 05: the recall drill.
-   Front = English word (production-first, Vision P1); the answer slides open
+   Front = English word (production-first, Vision P1); the answer uncovers
    like the workbook's covered column. A sitting is planned before it starts,
    so the header can talk about *this sitting* instead of showing a backlog
    number that only makes you feel behind (ADR-009). */
@@ -116,6 +117,10 @@ export default function ReviewPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  const active = session?.active ?? false
+  const drilling = active && card != null && !stopped && !error
+  useFocusMode(drilling)
+
   if (error)
     return (
       <div className="mx-auto max-w-2xl px-6 pt-20 text-center">
@@ -130,10 +135,36 @@ export default function ReviewPage() {
       </div>
     )
 
-  const active = session?.active ?? false
+  const controls = !revealed ? (
+    <Button onClick={() => setRevealed(true)} className="min-h-14 w-full pointer-coarse:min-h-14 sm:min-h-0 sm:w-auto sm:pointer-coarse:min-h-11">
+      Uncover answer
+    </Button>
+  ) : (
+    <div
+      className="grid grid-cols-4 gap-2 sm:flex sm:justify-center sm:gap-3"
+      role="radiogroup"
+      aria-label="Rate your recall"
+    >
+      {RATINGS.map(({ label, hint, tone, value }) => (
+        <RateButton
+          key={value}
+          label={label}
+          hint={hint}
+          tone={tone}
+          outcome={queue?.preview?.ratings[label.toLowerCase() as RatingName]}
+          onClick={() => rate(value)}
+          disabled={busy}
+        />
+      ))}
+    </div>
+  )
 
   return (
-    <Page width="study" bottom="" className="flex min-h-[80vh] flex-col">
+    <Page
+      width="study"
+      bottom={drilling ? 'pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-0' : ''}
+      className="flex min-h-[80vh] flex-col"
+    >
       <PageHeader
         title="Review"
         meta={
@@ -183,43 +214,37 @@ export default function ReviewPage() {
             />
           ) : card && !stopped ? (
             <motion.div
-              key={card.id}
+              key="sitting"
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -16, opacity: 0 }}
               transition={SLIDE}
-              className="border-rule-strong border bg-surface/70 px-6 py-10 text-center sm:px-10"
             >
-              {(card.is_new || card.comeback || queue?.ahead) && (
-                <p className="text-cobalt-deep mb-4 text-xs font-semibold tracking-label uppercase">
-                  {card.is_new
-                    ? 'New entry'
-                    : card.comeback
-                      ? 'Coming back — meet it again'
-                      : 'Still learning — once more'}
+              {/* Only entering a sitting moves; repeated cards are cuts. */}
+              <div key={card.id} className="border-rule-strong border bg-surface/70 px-6 py-10 text-center sm:px-10">
+                {(card.is_new || card.comeback || queue?.ahead) && (
+                  <p className="text-cobalt-deep mb-4 text-xs font-semibold tracking-label uppercase">
+                    {card.is_new
+                      ? 'New entry'
+                      : card.comeback
+                        ? 'Coming back — meet it again'
+                        : 'Still learning — once more'}
+                  </p>
+                )}
+                <p className="font-book flex items-center justify-center gap-3 text-3xl font-semibold">
+                  {card.word}
+                  <PlayButton
+                    src={card.audio_word}
+                    label={`Hear ${card.word}`}
+                    size={22}
+                    autoPlay={autoAudio}
+                  />
                 </p>
-              )}
-              <p className="font-book flex items-center justify-center gap-3 text-3xl font-semibold">
-                {card.word}
-                <PlayButton
-                  src={card.audio_word}
-                  label={`Hear ${card.word}`}
-                  size={22}
-                  autoPlay={autoAudio}
-                />
-              </p>
-              {card.pronunciation && (
-                <p className="text-ghost mt-2 text-sm">/{card.pronunciation}/</p>
-              )}
+                {card.pronunciation && (
+                  <p className="text-ghost mt-2 text-sm">/{card.pronunciation}/</p>
+                )}
 
-              <AnimatePresence initial={false}>
                 {revealed ? (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    transition={SLIDE}
-                    className="overflow-hidden"
-                  >
+                  <div className="fade-in">
                     <div className="border-rule mt-6 border-t pt-6">
                       {card.meaning_es && (
                         <p lang="es" className="font-book text-cobalt-deep text-xl">
@@ -241,32 +266,10 @@ export default function ReviewPage() {
                         </p>
                       )}
                     </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-
-              <div className="mt-8">
-                {!revealed ? (
-                  <Button onClick={() => setRevealed(true)}>Uncover answer</Button>
-                ) : (
-                  <div
-                    className="flex flex-wrap justify-center gap-2 sm:gap-3"
-                    role="radiogroup"
-                    aria-label="Rate your recall"
-                  >
-                    {RATINGS.map(({ label, hint, tone, value }) => (
-                      <RateButton
-                        key={value}
-                        label={label}
-                        hint={hint}
-                        tone={tone}
-                        outcome={queue?.preview?.ratings[label.toLowerCase() as RatingName]}
-                        onClick={() => rate(value)}
-                        disabled={busy}
-                      />
-                    ))}
                   </div>
-                )}
+                ) : null}
+
+                <div className="mt-8 hidden sm:block">{controls}</div>
               </div>
             </motion.div>
           ) : !stopped && queue?.cooling && queue.resume_at ? (
@@ -297,6 +300,9 @@ export default function ReviewPage() {
 
         {active && card && !stopped && (
           <>
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-paper px-5 pb-[env(safe-area-inset-bottom)] sm:hidden">
+              <div className="py-3">{controls}</div>
+            </div>
             {/* Con la cola vacía, el intervalo del botón sigue siendo el
                 scheduling real pero la card vuelve enseguida — esperar diez
                 minutos mirando una pantalla vacía no enseña nada. Decirlo
@@ -313,7 +319,7 @@ export default function ReviewPage() {
                 {queue.brake.note}{' '}
                 <button
                   onClick={() => api.keepGoing().then(load).catch(() => undefined)}
-                  className="hover:text-ink underline underline-offset-2 transition-colors"
+                  className="press hover:text-ink underline underline-offset-2 pointer-coarse:min-h-11"
                 >
                   Keep going anyway
                 </button>
@@ -322,14 +328,15 @@ export default function ReviewPage() {
             <p className="tnum text-ghost mt-3 text-center text-xs">
               <button
                 onClick={() => setStopped(true)}
-                className="hover:text-ink-soft underline underline-offset-2 transition-colors"
+                className="press hover:text-ink-soft underline underline-offset-2 pointer-coarse:min-h-11"
               >
                 stop here
               </button>{' '}
-              · space to uncover · 1–4 to rate ·{' '}
+              <span className="pointer-coarse:hidden">· space to uncover · 1–4 to rate </span>
+              ·{' '}
               <button
                 onClick={() => setAutoAudio((v) => !v)}
-                className="hover:text-ink-soft underline underline-offset-2 transition-colors"
+                className="press hover:text-ink-soft underline underline-offset-2 pointer-coarse:min-h-11"
               >
                 audio {autoAudio ? 'on' : 'off'}
               </button>
@@ -916,14 +923,13 @@ function RateButton({
     easy: 'border-cobalt/50 text-cobalt-deep hover:bg-cobalt-wash',
   }[tone]
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="min-w-0 sm:flex sm:flex-col sm:items-center sm:gap-1">
       {/* The interval sits ABOVE the button, the way Anki does it: it is a
           property of the choice, not a caption on the result. It says when
           the card comes back, never how long you have been studying it. */}
       <span
-        className={`tnum text-xs ${
-          outcome ? 'text-ghost' : 'text-transparent'
-        }`}
+        className="tnum text-ghost hidden text-xs sm:block"
+        style={{ visibility: outcome ? 'visible' : 'hidden' }}
         aria-hidden={!outcome}
       >
         {outcome?.interval ?? '·'}
@@ -932,17 +938,20 @@ function RateButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={outcome ? `${label} — next in ${outcome.interval}` : label}
-        className={`rounded-sm border px-4 py-2 text-xs font-semibold tracking-label uppercase transition-colors disabled:opacity-40 ${styles}`}
+        className={`press flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-sm border px-1 py-2 disabled:opacity-40 pointer-coarse:min-h-16 sm:block sm:min-h-0 sm:pointer-coarse:min-h-11 sm:w-auto sm:px-4 ${styles}`}
       >
-        {label}
-        <span className="tnum text-ghost ml-1.5 text-xs">{hint}</span>
+        {outcome && <span className="tnum text-ghost text-xs sm:hidden">{outcome.interval}</span>}
+        <span className="text-xs font-semibold tracking-label uppercase">
+          {label}
+          <span className="tnum text-ghost ml-1.5 text-xs pointer-coarse:hidden">{hint}</span>
+        </span>
+        {outcome?.graduates && <span className="text-cobalt text-xs sm:hidden">graduates</span>}
       </button>
       {/* Graduation is worth naming: it is the card leaving the minutes
           behind for good. */}
       <span
-        className={`text-xs font-semibold tracking-label uppercase ${
-          outcome?.graduates ? 'text-cobalt-deep' : 'text-transparent'
-        }`}
+        className="text-cobalt-deep hidden text-xs font-semibold tracking-label uppercase sm:block"
+        style={{ visibility: outcome?.graduates ? 'visible' : 'hidden' }}
         aria-hidden={!outcome?.graduates}
       >
         graduates

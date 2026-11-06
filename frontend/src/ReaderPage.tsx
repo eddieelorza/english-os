@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api, STOPWORDS } from './api'
@@ -17,6 +18,7 @@ import {
   SLIDE,
   describeError,
   fmt,
+  useFocusMode,
 } from './ui'
 
 const TOKEN_SPLIT = /([A-Za-z]+(?:['’][A-Za-z]+)?)/
@@ -39,6 +41,8 @@ interface Popup {
   entry: LexiconEntry | null
   top: number
   left: number
+  sentenceIndex: number
+  sentence: string
 }
 
 export default function ReaderPage() {
@@ -59,6 +63,59 @@ export default function ReaderPage() {
      take a minute over one sentence. */
   const [explainSentence, setExplainSentence] = useState<string | null>(null)
   const [explainSince, setExplainSince] = useState<number | null>(null)
+
+  const [marks, setMarks] = useState<'learning' | 'all'>(() => {
+    try {
+      return localStorage.getItem('reader.marks') === 'all' ? 'all' : 'learning'
+    } catch {
+      return 'learning'
+    }
+  })
+  const [size, setSize] = useState<'normal' | 'large'>(() => {
+    try {
+      return localStorage.getItem('reader.size') === 'large' ? 'large' : 'normal'
+    } catch {
+      return 'normal'
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('reader.marks', marks)
+      localStorage.setItem('reader.size', size)
+    } catch {
+      /* A private window keeps these choices for this visit only. */
+    }
+  }, [marks, size])
+
+  const [phone, setPhone] = useState(() => matchMedia('(width < 40rem)').matches)
+  useEffect(() => {
+    const media = matchMedia('(width < 40rem)')
+    const update = () => setPhone(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  useFocusMode(text != null && !finished && !error)
+
+  const slipRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!popup) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPopup(null)
+    }
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target
+      if (!(target instanceof Element)) return
+      if (!slipRef.current?.contains(target) && !target.closest('[data-reader-word]')) {
+        setPopup(null)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [popup])
 
   async function runExplain(sentence: string) {
     setExplanation(null)
@@ -127,11 +184,17 @@ export default function ReaderPage() {
     const low = token.toLowerCase().replace('’', "'")
     if (STOPWORDS.has(low)) return ''
     const entry = lookup(token)
+    if (marks === 'learning' && entry?.status !== 'LEARNING') return ''
     if (!entry) return UNDERLINE.unknown
     return UNDERLINE[entry.status]
   }
 
-  function openPopup(e: React.MouseEvent<HTMLButtonElement>, token: string) {
+  function openPopup(
+    e: React.MouseEvent<HTMLButtonElement>,
+    token: string,
+    sentenceIndex: number,
+    sentence: string,
+  ) {
     const article = articleRef.current
     if (!article) return
     const r = e.currentTarget.getBoundingClientRect()
@@ -141,6 +204,8 @@ export default function ReaderPage() {
     setPopup({
       token,
       entry: lookup(token),
+      sentenceIndex,
+      sentence,
       top: r.bottom - a.top + 10,
       left: Math.max(0, Math.min(r.left - a.left, a.width - width)),
     })
@@ -248,10 +313,11 @@ export default function ReaderPage() {
     )
 
   return (
-    <Page width="study" bottom="pb-24">
+    <Page width="study" bottom="pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-24">
+      <ReadingProgress articleRef={articleRef} />
       <PageHeader
         overline={
-          <Link to="/reading" className="hover:text-ink-soft">
+          <Link to="/reading" className="press inline-flex items-center hover:text-ink-soft pointer-coarse:min-h-11">
             ← Shelf
           </Link>
         }
@@ -265,66 +331,116 @@ export default function ReaderPage() {
         }
       />
 
+      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-ghost text-xs font-semibold tracking-label uppercase">Marks</span>
+          {(['learning', 'all'] as const).map((choice, i) => (
+            <span key={choice} className="flex items-center gap-2">
+              {i > 0 && <span className="text-ghost" aria-hidden>·</span>}
+              <button
+                onClick={() => setMarks(choice)}
+                aria-pressed={marks === choice}
+                className={`press text-xs font-semibold pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${
+                  marks === choice
+                    ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
+                    : 'text-ghost hover:text-ink-soft'
+                }`}
+              >
+                {choice === 'learning' ? 'Learning' : 'All'}
+              </button>
+            </span>
+          ))}
+        </div>
+        <button
+          onClick={() => setSize((s) => s === 'normal' ? 'large' : 'normal')}
+          aria-pressed={size === 'large'}
+          className={`press text-xs font-semibold pointer-coarse:min-h-11 ${
+            size === 'large'
+              ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
+              : 'text-ghost hover:text-ink-soft'
+          }`}
+        >
+          Larger text
+        </button>
+      </div>
+
       {/* Listen & shadow */}
       <ReadingPlayer textId={text.id} onSentence={setSpoken} />
 
       {/* The page itself */}
       <div ref={articleRef} className="relative">
-        <article className="font-book mt-8 max-w-[68ch] text-lg leading-[1.75]">
+        <article className={`font-book mt-8 max-w-[68ch] leading-[1.75] ${size === 'large' ? 'text-xl' : 'text-lg'}`}>
           {(() => {
             let sentenceIndex = -1
-            return text.body.split(/\n+/).map((para, pi) => (
-              <p key={pi} className="mb-5">
-                {(para.match(SENTENCE_SPLIT) ?? [para]).map((sentence) => {
-                  if (!sentence.trim()) return null
-                  sentenceIndex += 1
-                  const idx = sentenceIndex
-                  const lit = spoken === idx
-                  const explaining = explainIndex === idx
-                  return (
-                    <span
-                      key={idx}
-                      className={`group ${
-                        lit
-                          ? 'bg-cobalt-wash -mx-0.5 rounded-[2px] px-0.5 transition-colors'
-                          : explaining
-                            ? 'bg-cobalt-wash/60 -mx-0.5 rounded-[2px] px-0.5'
-                            : spoken != null
-                              ? 'opacity-55 transition-opacity'
-                              : 'transition-opacity'
-                      }`}
-                    >
-                      {sentence.split(TOKEN_SPLIT).map((part, i) =>
-                        i % 2 === 1 ? (
-                          <button
-                            key={i}
-                            onClick={(e) => openPopup(e, part)}
-                            className={`hover:bg-cobalt-wash rounded-[2px] transition-colors ${classFor(part)}`}
-                          >
-                            {part}
-                          </button>
-                        ) : (
-                          <span key={i}>{part}</span>
-                        ),
-                      )}
-                      {/* The sentence mark. `hidden`, not `opacity-0`: an
-                          invisible glyph would still take a slot and open a
-                          ragged gap after every sentence. */}
-                      <button
-                        onClick={() => askExplain(idx, sentence.trim())}
-                        aria-label="Explain this sentence"
-                        title="Explain this sentence"
-                        className={`text-cobalt-deep font-ui align-baseline text-xs font-semibold ${
-                          explaining ? 'inline' : 'hidden group-hover:inline'
+            return text.body.split(/\n+/).map((para, pi) => {
+              const sentences = para.match(SENTENCE_SPLIT) ?? [para]
+              const printed = [...sentences]
+              /* A closing quote can fall in the next karaoke sentence. Keep
+                 its printed ink with the preceding word, without moving indices. */
+              for (let i = 1; i < printed.length; i++) {
+                if (/\s$/.test(printed[i - 1])) continue
+                const punctuation = printed[i].match(/^[^\sA-Za-z]+/)?.[0] ?? ''
+                printed[i - 1] += punctuation
+                printed[i] = printed[i].slice(punctuation.length)
+              }
+              return (
+                <p key={pi} className="mb-5">
+                  {sentences.map((sentence, si) => {
+                    if (!sentence.trim()) return null
+                    sentenceIndex += 1
+                    const idx = sentenceIndex
+                    const lit = spoken === idx
+                    const explaining = explainIndex === idx
+                    return (
+                      <span
+                        key={idx}
+                        className={`group ${
+                          lit
+                            ? 'bg-cobalt-wash -mx-0.5 rounded-[2px] px-0.5 transition-colors'
+                            : explaining
+                              ? 'bg-cobalt-wash/60 -mx-0.5 rounded-[2px] px-0.5'
+                              : spoken != null
+                                ? 'opacity-55 transition-opacity'
+                                : 'transition-opacity'
                         }`}
                       >
-                        ¶
-                      </button>
-                    </span>
-                  )
-                })}
-              </p>
-            ))
+                        {(printed[si].match(/\s+|\S+/g) ?? []).map((chunk, ci) =>
+                          /^\s+$/.test(chunk) ? chunk : (
+                            <span key={ci} className="whitespace-nowrap">
+                              {chunk.split(TOKEN_SPLIT).map((part, i) =>
+                                i % 2 === 1 ? (
+                                  <button
+                                    key={i}
+                                    data-reader-word
+                                    onClick={(e) => openPopup(e, part, idx, sentence.trim())}
+                                    className={`press hover:bg-cobalt-wash rounded-[2px] ${classFor(part)}`}
+                                  >
+                                    {part}
+                                  </button>
+                                ) : part,
+                              )}
+                            </span>
+                          ),
+                        )}
+                        {/* The sentence mark. `hidden`, not `opacity-0`: an
+                            invisible glyph would still take a slot and open a
+                            ragged gap after every sentence. */}
+                        <button
+                          onClick={() => askExplain(idx, sentence.trim())}
+                          aria-label="Explain this sentence"
+                          title="Explain this sentence"
+                          className={`press text-cobalt-deep font-ui align-baseline text-xs font-semibold pointer-coarse:hidden ${
+                            explaining ? 'inline' : 'hidden group-hover:inline'
+                          }`}
+                        >
+                          ¶
+                        </button>
+                      </span>
+                    )
+                  })}
+                </p>
+              )
+            })
           })()}
         </article>
 
@@ -333,12 +449,13 @@ export default function ReaderPage() {
           {popup && (
             <motion.aside
               key={`${popup.token}-${popup.top}`}
-              initial={{ y: -8, opacity: 0 }}
+              ref={slipRef}
+              initial={{ y: phone ? '100%' : -8, opacity: phone ? 1 : 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -8, opacity: 0 }}
+              exit={{ y: phone ? '100%' : -8, opacity: phone ? 1 : 0 }}
               transition={SLIDE}
-              style={{ top: popup.top, left: popup.left, width: 340, maxWidth: '100%' }}
-              className="border-rule-strong absolute z-10 border bg-surface p-4 shadow-slip"
+              style={phone ? undefined : { top: popup.top, left: popup.left, width: 340, maxWidth: '100%' }}
+              className="border-rule-strong fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto border-t bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-slip sm:absolute sm:inset-x-auto sm:bottom-auto sm:z-10 sm:max-h-none sm:overflow-visible sm:border sm:pb-4"
               role="dialog"
               aria-label={`Dictionary: ${popup.token}`}
             >
@@ -350,7 +467,7 @@ export default function ReaderPage() {
                     <span className="text-ghost text-xs font-normal">/{popup.entry.pronunciation}/</span>
                   )}
                 </p>
-                <button onClick={() => setPopup(null)} aria-label="Close" className="text-ghost hover:text-ink -mr-1 px-1 text-sm">
+                <button onClick={() => setPopup(null)} aria-label="Close" className="press text-ghost hover:text-ink -mr-1 shrink-0 px-1 text-sm pointer-coarse:min-h-11 pointer-coarse:min-w-11">
                   ✕
                 </button>
               </div>
@@ -379,17 +496,17 @@ export default function ReaderPage() {
                     ) : (
                       <button
                         onClick={() => setEsOpen(true)}
-                        className="border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash mt-2.5 rounded-sm border border-dashed px-2.5 py-1 text-xs font-semibold tracking-label uppercase transition-colors"
+                        className="press border-cobalt/40 text-cobalt-deep hover:bg-cobalt-wash mt-2.5 rounded-sm border border-dashed px-2.5 py-1 text-xs font-semibold tracking-label uppercase pointer-coarse:min-h-11"
                       >
                         Uncover Spanish
                       </button>
                     ))}
-                  <div className="border-rule mt-3 flex items-center gap-3 border-t pt-2.5">
+                  <div className="border-rule mt-3 flex flex-wrap items-center gap-3 border-t pt-2.5">
                     {(['NEW', 'LEARNING', 'FAMILIAR', 'MASTERED'] as WordStatus[]).map((s) => (
                       <button
                         key={s}
                         onClick={() => setStatus(popup.entry!, s)}
-                        className={`text-xs font-semibold tracking-label uppercase ${
+                        className={`press text-xs font-semibold tracking-label uppercase pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${
                           popup.entry!.status === s
                             ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
                             : 'text-ghost hover:text-ink-soft'
@@ -415,6 +532,15 @@ export default function ReaderPage() {
                   </Button>
                 </>
               )}
+              <button
+                onClick={() => {
+                  setPopup(null)
+                  void askExplain(popup.sentenceIndex, popup.sentence)
+                }}
+                className="press text-cobalt-deep mt-3 block text-sm underline underline-offset-4 pointer-coarse:min-h-11"
+              >
+                Explain this sentence
+              </button>
             </motion.aside>
           )}
         </AnimatePresence>
@@ -440,7 +566,7 @@ export default function ReaderPage() {
                     setExplainIndex(null)
                     setExplanation(null)
                   }}
-                  className="text-ghost hover:text-ink text-sm"
+                  className="press text-ghost hover:text-ink text-sm pointer-coarse:min-h-11 pointer-coarse:min-w-11"
                   aria-label="Close explanation"
                 >
                   ✕
@@ -483,6 +609,52 @@ export default function ReaderPage() {
         </Button>
       </footer>
     </Page>
+  )
+}
+
+/* Scroll updates only this small apparatus, never the tappable words. */
+function ReadingProgress({ articleRef }: { articleRef: RefObject<HTMLDivElement | null> }) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const [percent, setPercent] = useState(0)
+  useEffect(() => {
+    const article = articleRef.current?.querySelector('article')
+    if (!article) return
+    let frame = 0
+    const measure = () => {
+      frame = 0
+      const rect = article.getBoundingClientRect()
+      const distance = rect.height - window.innerHeight
+      const p = distance > 0
+        ? Math.max(0, Math.min(1, -rect.top / distance))
+        : rect.bottom <= window.innerHeight ? 1 : 0
+      if (barRef.current) barRef.current.style.transform = `scaleX(${p})`
+      setPercent(Math.round(p * 100))
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    const observer = new ResizeObserver(schedule)
+    observer.observe(article)
+    schedule()
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [articleRef])
+  return (
+    <>
+      <div ref={barRef} aria-hidden style={{ transform: 'scaleX(0)' }} className="bg-cobalt fixed inset-x-0 top-0 z-40 h-0.5 origin-left" />
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-paper px-5 pb-[env(safe-area-inset-bottom)] sm:hidden">
+        <div className="flex h-14 items-center justify-between">
+          <Link to="/reading" className="press text-cobalt-deep flex min-h-11 items-center text-sm">← Shelf</Link>
+          <span className="tnum text-ghost text-xs">{percent}%</span>
+        </div>
+      </div>
+    </>
   )
 }
 

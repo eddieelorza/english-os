@@ -115,13 +115,23 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes page-in {
+/* Only phones replace navigation with a reading or rating dock. */
+@media (width < 40rem) {
+  :root[data-focus] .tab-bar {
+    display: none;
+  }
+  :root[data-focus] #content {
+    padding-bottom: 0;
+  }
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
   }
 }
-.page-in {
-  animation: page-in var(--default-transition-duration) linear;
+.fade-in {
+  animation: fade-in var(--default-transition-duration) linear;
 }
 
 /* The press: the interface heard you. A wide row sets --press closer to 1,

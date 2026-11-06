@@ -67,6 +67,18 @@ const isDeep = (pathname: string) => /^\/reading\/.+/.test(pathname)
 /* Drilling and reading want the page, so the rail folds to its numerals there. */
 const isFocus = (pathname: string) => pathname === '/review' || isDeep(pathname)
 
+/* Focus pages supply their own way out and their own phone controls. */
+// oxlint-disable-next-line react/only-export-components -- The shell owns focus mode and shares its hook with pages.
+export function useFocusMode(active: boolean) {
+  useEffect(() => {
+    if (active) document.documentElement.dataset.focus = ''
+    else delete document.documentElement.dataset.focus
+    return () => {
+      delete document.documentElement.dataset.focus
+    }
+  }, [active])
+}
+
 function read(key: string) {
   try {
     return localStorage.getItem(key)
@@ -269,7 +281,7 @@ function TabBar({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Course"
-      className="border-rule bg-paper fixed inset-x-0 bottom-0 z-30 flex border-t pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] lg:hidden"
+      className="tab-bar border-rule bg-paper fixed inset-x-0 bottom-0 z-30 flex border-t pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] lg:hidden"
     >
       {GROUPS.map(({ tab, icon: Icon, lessons }) => {
         const active = lessons.some((l) => isIn(pathname, l.path))

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Check } from 'lucide-react'
 import { api } from './api'
 import type { ResumeResult, Today } from './api'
 import {
@@ -74,11 +75,17 @@ export default function TodayPage() {
 
   const dateLabel = new Date(`${today?.date ?? new Date().toISOString().slice(0, 10)}T12:00:00`)
     .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const next = !today || today.pause.paused
+    ? null
+    : today.review.due > 0 || today.review.new_available > 0
+      ? 'review'
+      : today.unfinished_reading
+        ? 'read'
+        : 'practice'
 
   return (
     <Page width="evidence">
       <PageHeader
-        overline="Today's lesson"
         title={dateLabel}
         subtitle={
           today && (
@@ -143,6 +150,8 @@ export default function TodayPage() {
           {/* 1 · Review */}
           <Row
             n="1"
+            next={next === 'review'}
+            done={today.review.due === 0 && today.review.reviewed_today > 0}
             title="Review your words"
             to="/review"
             cta={today.review.due > 0 ? 'Start reviewing' : 'Open the deck'}
@@ -175,6 +184,8 @@ export default function TodayPage() {
           {/* 2 · Reading */}
           <Row
             n="2"
+            next={next === 'read'}
+            done={!today.unfinished_reading && today.reading_minutes_today > 0}
             title="Read"
             to={today.unfinished_reading ? `/reading/${today.unfinished_reading.id}` : '/reading'}
             cta={today.unfinished_reading ? 'Continue reading' : 'Get a reading'}
@@ -198,14 +209,14 @@ export default function TodayPage() {
           </Row>
 
           {/* 3 · Practice */}
-          <Row n="3" title="Practice" to="/practice" cta="Open practice">
+          <Row n="3" title="Practice" to="/practice" cta="Open practice" next={next === 'practice'}>
             Grammar, vocabulary and listening drills built from your words — all
             multiple choice.
           </Row>
 
           {/* 4 · Writing */}
           <Row n="4" title="Write" to="/writing" cta="Start writing">
-            Four to six sentences. The coach checks your tenses and corrects you.
+            Reply to a short message, one sentence at a time. Each sentence is checked as you go.
           </Row>
 
           {/* 5 · Focus */}
@@ -278,16 +289,6 @@ export default function TodayPage() {
               )}
             </div>
           )}
-
-          {/* Last session note */}
-          {today.last_session && (
-            <p className="tnum text-ghost mt-6 text-xs">
-              Last session: {today.last_session.date} ·{' '}
-              {fmt(today.last_session.cards_reviewed)} cards
-              {today.last_session.again_rate != null &&
-                ` · ${Math.round(today.last_session.again_rate * 100)}% again`}
-            </p>
-          )}
         </div>
       )}
     </Page>
@@ -300,25 +301,37 @@ function Row({
   children,
   to,
   cta,
+  next = false,
+  done = false,
 }: {
   n: string
   title: string
   children: React.ReactNode
   to?: string
   cta?: string
+  next?: boolean
+  done?: boolean
 }) {
   return (
-    <section className="border-rule flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b py-5">
-      <span className="tnum text-ghost w-6 shrink-0 text-right text-sm">{n}</span>
-      <div className="min-w-0 flex-1">
-        <h3 className="text-base font-bold tracking-tight">{title}</h3>
-        <p className="font-book text-ink-soft mt-1 text-base leading-relaxed">{children}</p>
+    <section className="border-rule flex items-baseline gap-4 border-b py-5 sm:gap-6">
+      <span className={`tnum w-6 shrink-0 text-right text-sm ${next ? 'text-cobalt-deep font-semibold' : 'text-ghost'}`}>
+        {done ? <Check size={16} strokeWidth={1.75} aria-label="Done" className="text-cobalt ml-auto" /> : n}
+      </span>
+      <div className="grid min-w-0 flex-1 grid-cols-1 items-baseline sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-6">
+        <h3 className={`font-bold tracking-tight ${next ? 'text-lg' : 'text-base'}`}>{title}</h3>
+        <p className="font-book text-ink-soft mt-1 text-base leading-relaxed sm:col-span-2 sm:row-start-2">{children}</p>
+        {to && cta && (
+          <ButtonLink
+            to={to}
+            variant={next ? 'primary' : 'text'}
+            tone="cobalt"
+            size="sm"
+            className={`mt-3 justify-self-start pointer-coarse:min-h-11 ${next ? 'sm:row-start-3' : 'sm:col-start-2 sm:row-start-1 sm:mt-0 sm:justify-self-end'}`}
+          >
+            {cta} →
+          </ButtonLink>
+        )}
       </div>
-      {to && cta && (
-        <ButtonLink to={to} variant="text" tone="cobalt" className="shrink-0">
-          {cta} →
-        </ButtonLink>
-      )}
     </section>
   )
 }

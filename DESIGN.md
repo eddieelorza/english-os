@@ -494,6 +494,33 @@ theme control sits in the rail's foot and, on a phone, in *More*.
 The 2 px margin marks, the spine and the ribbon are the world's deliberate
 exceptions to the generic side-stripe ban (rule 2).
 
+**Focus mode** (`useFocusMode`): while drilling or reading on a phone, the tab
+bar steps aside and the page brings its own dock in the same chrome (paper, top
+rule, safe area). Every focus page owns its way out.
+
+**Today** names one next step: Review while anything is due or new, else the
+unfinished reading, else Practice. Only that row has a solid button; the others
+keep the text link. A row is marked done (a cobalt check in place of its number)
+only on real evidence: deck clear after reviewing today, reading finished after
+reading today. There is no "last session" line: it read the legacy table the
+Anki cut-over froze.
+
+**Review** is a cut from card to card. Rating repeats dozens of times a sitting,
+and an exit animation made every one wait. Uncover is a 120 ms fade, not a height
+animation. On a phone, Uncover and the four ratings live in a bottom dock (56 px,
+then 64 px buttons with interval and label inside). Keyboard hints only show
+where there is a keyboard.
+
+**The Reader** marks only *learning* words by default: underlining every
+unknown word made the page look graded. *All* brings back the full ink, and both
+that and *Larger text* are remembered. A word stays glued to the punctuation
+touching it, so no line begins with a comma or a closing quote. A 2 px cobalt
+thread at the top shows how far you are through the text. The dictionary slip
+carries *Explain this sentence*, because a touch screen never sees the hover ¶;
+on a phone the slip is a bottom sheet. Esc or a tap outside closes it. Words
+stay at their text height on touch screens: a 44 px word would open the leading
+of the whole page, and running text is the accepted exception for target size.
+
 ## Extending
 
 Inherit this world; no new identity exercises. Any new module claims its

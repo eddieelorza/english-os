@@ -21,7 +21,7 @@ export default function App() {
           page to leave would slow every navigation in order to feel smoother.
           In CSS, not Motion: a frame-driven fade leaves the page nearly invisible
           whenever the main thread is busy, which is exactly when a page arrives. */}
-      <div key={pathname} className="page-in">
+      <div key={pathname} className="fade-in">
         <Routes>
           <Route path="/" element={<TodayPage />} />
           <Route path="/vocabulary" element={<VocabularyPage />} />
