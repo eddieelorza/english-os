@@ -45,8 +45,9 @@ install)
   <dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
   <key>ProcessType</key><string>Background</string>
   <key>LowPriorityIO</key><true/>
-  <key>StandardOutPath</key><string>$PROJECT/logs/backup.log</string>
-  <key>StandardErrorPath</key><string>$PROJECT/logs/backup.log</string>
+  <!-- Sin StandardOutPath a propósito: tras un reinicio launchd ya no puede
+       reabrir un log que existía en ~/Desktop y sale con 78 sin correr nada.
+       El script abre su propio log (abajo). -->
 </dict>
 </plist>
 PLIST
@@ -60,6 +61,10 @@ PLIST
   exec "$0" run
   ;;
 esac
+
+# Bajo launchd no hay terminal: la salida va al log. Lo abre bash, no launchd,
+# porque launchd pierde el acceso a ese archivo en cada reinicio (código 78).
+[[ -t 1 ]] || { mkdir -p "$PROJECT/logs"; exec >>"$PROJECT/logs/backup.log" 2>&1; }
 
 [[ -f "$DB" ]] || { echo "no existe $DB" >&2; exit 1; }
 mkdir -p "$DEST"
