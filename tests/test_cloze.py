@@ -103,7 +103,7 @@ class TestCloze(unittest.TestCase):
         self.assertTrue(fake.generate_json.called)
         self.assertEqual(len(built["questions"]), 1)
 
-    def test_the_activity_grades_and_feeds_the_error_table_like_any_other(self):
+    def test_the_activity_grades_without_creating_production_errors(self):
         conn = seeded()
         with mock.patch.object(activities.ai, "get_provider",
                                side_effect=AssertionError("llamó a la IA")), \
@@ -116,7 +116,7 @@ class TestCloze(unittest.TestCase):
         r = activities.submit(conn, vocab["id"], wrong)
         self.assertEqual(r["score"], 0)
         self.assertEqual(conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0],
-                         len(vocab["questions"]))
+                         0)
 
 
 class TestDailyReadingGuard(unittest.TestCase):

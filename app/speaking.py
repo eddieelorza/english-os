@@ -28,10 +28,57 @@ from app import ai, db, model  # noqa: E402
 RECORDINGS_DIR = BASE / "data" / "recordings"
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
 
-# Same category vocabulary the Error Library already uses.
-ERROR_CATEGORIES = ("Artículos", "Preposiciones", "Concordancia",
-                    "Tiempos verbales", "Colocación", "Registro",
-                    "Vocabulario", "Orden de palabras")
+# Vocabulario único para todos los errores de producción.
+ERROR_CATEGORIES = ("ART", "PREP", "S-V", "COLL", "TENSE", "REG", "WORD", "ORDER")
+
+
+def normalize_category(raw: str) -> str | None:
+    """Convierte códigos y alias conocidos; descarta categorías inventadas."""
+    if not isinstance(raw, str):
+        return None
+    key = " ".join(raw.split()).casefold()
+    if key.upper() in ERROR_CATEGORIES:
+        return key.upper()
+    return {
+        "artículos": "ART", "preposiciones": "PREP", "concordancia": "S-V",
+        "tiempos verbales": "TENSE", "colocación": "COLL", "registro": "REG",
+        "vocabulario": "WORD", "falsos amigos": "WORD",
+        "orden de palabras": "ORDER",
+    }.get(key)
+
+
+# ── Persistence: the correction becomes study material ───────────────────
+
+def _store_errors(conn: sqlite3.Connection, errors: "list[dict]",
+                  source: str = "Speaking") -> int:
+    """Guarda errores de producción por (categoría, original).
+
+    Una repetición sube las recurrencias en vez de duplicar la fila.
+    """
+    stored = 0
+    today = db.study_day()
+    for e in errors:
+        category = normalize_category(e.get("category"))
+        if category is None:
+            continue
+        existing = conn.execute(
+            "SELECT id, recurrences FROM errors WHERE category=? AND original=?",
+            (category, e["original"])).fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE errors SET recurrences=?, date=?, updated_at=? WHERE id=?",
+                (existing["recurrences"] + 1, today, db.now_iso(), existing["id"]))
+        else:
+            conn.execute(
+                "INSERT INTO errors (date, category, error, original, correction, "
+                "explanation, source, recurrences, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,?,1,?,?)",
+                (today, category, e["correction"], e["original"],
+                 e["correction"], e["explanation"], source,
+                 db.now_iso(), db.now_iso()))
+        stored += 1
+    return stored
+
 
 _whisper = None  # lazy singleton — the model load takes seconds
 
@@ -152,6 +199,9 @@ Typical Spanish-interference: articles, prepositions, verb tenses \
 false friends, word order.
 - Each error: the exact original fragment, the corrected fragment, one \
 category, and a one-sentence explanation that teaches.
+- Category codes: ART (articles), PREP (prepositions), S-V (subject-verb \
+agreement), COLL (collocations), TENSE (verb tenses), REG (register), \
+WORD (word choice or false friends), ORDER (word order).
 - natural_version: his whole answer rewritten as a fluent B2 speaker would \
 say it — keep his ideas and voice, don't embellish.
 - strength: one concrete thing he did well. practice_next: one specific \
@@ -164,34 +214,6 @@ def correct(transcript: str) -> dict:
         CORRECTION_SYSTEM,
         f'Transcript of his spoken answer:\n"{transcript}"',
         CORRECTION_SCHEMA, max_tokens=4096)
-
-
-# ── Persistence: the correction becomes study material ───────────────────
-
-def _store_errors(conn: sqlite3.Connection, errors: "list[dict]",
-                  source: str = "Speaking") -> int:
-    """Each error feeds the same table writing and activities use. Dedup by
-    (category, original): a repeat bumps Recurrences instead of duplicating."""
-    stored = 0
-    today = db.study_day()
-    for e in errors:
-        existing = conn.execute(
-            "SELECT id, recurrences FROM errors WHERE category=? AND original=?",
-            (e["category"], e["original"])).fetchone()
-        if existing:
-            conn.execute(
-                "UPDATE errors SET recurrences=?, date=?, updated_at=? WHERE id=?",
-                (existing["recurrences"] + 1, today, db.now_iso(), existing["id"]))
-        else:
-            conn.execute(
-                "INSERT INTO errors (date, category, error, original, correction, "
-                "explanation, source, recurrences, created_at, updated_at) "
-                "VALUES (?,?,?,?,?,?,?,1,?,?)",
-                (today, e["category"], e["correction"], e["original"],
-                 e["correction"], e["explanation"], source,
-                 db.now_iso(), db.now_iso()))
-        stored += 1
-    return stored
 
 
 def submit(conn: sqlite3.Connection, audio_path: "str | Path",

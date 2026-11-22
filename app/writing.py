@@ -19,7 +19,7 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE))
-from app import activities, ai, db, model, speaking  # noqa: E402
+from app import activities, ai, conversation, db, model, speaking  # noqa: E402
 
 PROMPT_SCHEMA = {
     "type": "object",
@@ -76,6 +76,9 @@ Protocol:
 articles, prepositions, verb tenses, false friends, word order.
 - Each error: exact original fragment, corrected fragment, one category, and \
 a one-sentence explanation IN SPANISH that teaches the rule.
+- Category codes: ART (articles), PREP (prepositions), S-V (subject-verb \
+agreement), COLL (collocations), TENSE (verb tenses), REG (register), \
+WORD (word choice or false friends), ORDER (word order).
 - improved_version: his text rewritten at B2 — same ideas and voice, no \
 embellishment.
 - tenses_used: the English tense names you actually find in his text \
@@ -172,9 +175,10 @@ CHECK_SCHEMA = {
         "ok": {"type": "boolean"},
         "fixed": {"type": "string"},
         "note": {"type": "string"},
-        "category": {"type": "string"},
+        "category": {"type": "string",
+                     "enum": [*speaking.ERROR_CATEGORIES, ""]},
     },
-    "required": ["ok", "fixed", "note"],
+    "required": ["ok", "fixed", "note", "category"],
     "additionalProperties": False,
 }
 
@@ -194,7 +198,9 @@ TWO FIELDS, TWO LANGUAGES. Never mix them up:
 - ok: true only if the sentence is correct and natural as it stands.
 - fixed: his sentence repaired, IN ENGLISH. If ok, repeat it unchanged.
 - note: ONE short line IN SPANISH — qué cambió y por qué. Empty string if ok.
-- category: one of ART, PREP, S-V, COLL, TENSE, REG, WORD. Empty if ok.
+- category: ART (articles), PREP (prepositions), S-V (subject-verb agreement),
+  COLL (collocations), TENSE (verb tenses), REG (register), WORD (word choice
+  or false friends), ORDER (word order). Empty if ok.
 
 Be encouraging but honest. Do not rewrite his meaning or make it fancier: fix \
 what is wrong, keep his voice. A clumsy but correct sentence is ok=true."""
@@ -271,32 +277,39 @@ def finish(conn: sqlite3.Connection, sentences: "list[dict]",
            scenario: "str | None" = None, seconds: int = 0) -> dict:
     """Cierra la sesión guiada.
 
-    Las oraciones ya vienen corregidas una a una, así que **no se vuelve a
-    llamar al modelo**: se ensambla lo que ya se sabe. Los errores entran al
-    mismo bucle que el resto (`errors`), y la fila queda igual que la de un
-    writing normal para que cuente como producción libre en la evidencia.
+    No se vuelve a llamar al modelo: sólo las oraciones comprobadas cuentan
+    como evidencia. El cuerpo conserva también lo que quedó sin comprobar.
     """
     kept = [s for s in sentences if (s.get("text") or "").strip()]
     if not kept:
         raise ValueError("No hay nada escrito todavía.")
 
     body = " ".join(s["text"].strip() for s in kept)
-    improved = " ".join((s.get("fixed") or s["text"]).strip() for s in kept)
-    errors = [
-        {"original": s["text"].strip(),
-         "correction": (s.get("fixed") or "").strip(),
-         "category": s.get("category") or "WORD",
-         "explanation": s.get("note") or ""}
-        for s in kept if not s.get("ok", True)
-    ]
-    words_produced = len(body.split())
-    right = len(kept) - len(errors)
+    checked = [s for s in kept if s.get("checked") is True]
+    unchecked = len(kept) - len(checked)
+    improved = " ".join(
+        ((s.get("fixed") or s["text"]) if s.get("checked") is True
+         else s["text"]).strip() for s in kept)
+    errors = []
+    for s in checked:
+        if s.get("ok", True):
+            continue
+        original, correction = conversation.tighten(
+            s["text"].strip(), (s.get("fixed") or "").strip())
+        if original.casefold() == correction.casefold():
+            continue
+        errors.append({"original": original, "correction": correction,
+                       "category": s.get("category"),
+                       "explanation": s.get("note") or ""})
+    words_produced = sum(len(s["text"].split()) for s in checked)
+    right = sum(bool(s.get("ok", True)) for s in checked)
 
     correction = {
         "errors": errors,
         "improved_version": improved,
-        "strength": (f"{right} de {len(kept)} oraciones salieron bien a la primera."
-                     if right else "Terminaste las cuatro oraciones."),
+        "strength": (f"{right} de {len(checked)} oraciones comprobadas "
+                     "salieron bien a la primera."
+                     if checked else "Guardaste tu texto sin comprobar oraciones."),
         "practice_next": (errors[0]["explanation"] if errors
                           else "Prueba a alargar una oración con 'because'."),
         "mode": "guided",
@@ -311,12 +324,12 @@ def finish(conn: sqlite3.Connection, sentences: "list[dict]",
         "correction": json.dumps(correction, ensure_ascii=False),
         "words_produced": words_produced,
         "errors_count": len(errors),
-        "corrected": 1,
+        "corrected": int(bool(checked)),
     })
     speaking._store_errors(conn, errors, source="Writing")
     conn.commit()
     return {"id": tid, "words_produced": words_produced, "seconds": seconds,
-            "sentences": len(kept), "errors": errors,
+            "sentences": len(kept), "unchecked": unchecked, "errors": errors,
             "improved_version": improved,
             "strength": correction["strength"],
             "practice_next": correction["practice_next"]}

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from './api'
 import type { Question } from './api'
-import { Section, Choice, SLIDE, fmt } from './ui'
+import { Section, Choice, ErrorLine, SLIDE, describeError, fmt } from './ui'
 import type { ChoiceState } from './ui'
 
 const LETTERS = ['A', 'B', 'C']
@@ -24,16 +24,34 @@ export default function ComprehensionQuiz({
     questions.map(() => null),
   )
   const [saved, setSaved] = useState<{ score: number; total: number } | null>(null)
+  const [failedSave, setFailedSave] = useState<{ answers: number[]; error: string } | null>(null)
+  const saving = useRef(false)
+
+  async function save(all: number[]) {
+    if (saving.current) return
+    saving.current = true
+    setFailedSave(null)
+    try {
+      setSaved(await api.submitQuiz(textId, all))
+    } catch (e: unknown) {
+      setFailedSave({
+        answers: all,
+        error: describeError(
+          e instanceof Error ? e.message : String(e),
+          'Your answers are still here, but the quiz could not be saved to your record.',
+        ),
+      })
+    } finally {
+      saving.current = false
+    }
+  }
 
   function pick(qi: number, oi: number) {
     if (answers[qi] != null) return
     const next = answers.map((a, i) => (i === qi ? oi : a))
     setAnswers(next)
     if (next.every((a) => a != null)) {
-      api
-        .submitQuiz(textId, next as number[])
-        .then(setSaved)
-        .catch(() => undefined)
+      void save(next as number[])
     }
   }
 
@@ -109,6 +127,11 @@ export default function ComprehensionQuiz({
           )
         })}
       </ol>
+      {failedSave && (
+        <ErrorLine onRetry={() => void save(failedSave.answers)} retryLabel="Retry saving quiz">
+          {failedSave.error}
+        </ErrorLine>
+      )}
     </Section>
   )
 }

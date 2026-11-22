@@ -7,6 +7,7 @@ oraciones" suena poco pero sigue siendo un recuadro vacío.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -16,9 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import db, writing  # noqa: E402
 
 
-def sentence(text, ok=True, fixed=None, note="", category=""):
+def sentence(text, ok=True, fixed=None, note="", category="", checked=True):
     return {"text": text, "ok": ok, "fixed": fixed or text,
-            "note": note, "category": category}
+            "note": note, "category": category, "checked": checked}
 
 
 class TestSpanishGuard(unittest.TestCase):
@@ -69,6 +70,70 @@ class TestSpanishGuard(unittest.TestCase):
 class TestFinish(unittest.TestCase):
     def setUp(self):
         self.conn = db.connect(":memory:")
+        self.addCleanup(self.conn.close)
+
+    def test_unchecked_sentences_are_saved_but_are_not_evidence(self):
+        sentences = [sentence("I like it."),
+                     sentence("She have two brothers.", ok=False,
+                              fixed="She has two brothers.", category="S-V",
+                              checked=False),
+                     sentence("This is also unchecked.", checked=False),
+                     {"text": "Missing checked means unchecked.", "ok": True}]
+        result = writing.finish(self.conn, sentences)
+        self.assertEqual(result["unchecked"], 3)
+        self.assertEqual(result["sentences"], 4)
+        self.assertEqual(result["words_produced"], 3)
+        self.assertEqual(result["errors"], [])
+        self.assertIn("1 de 1", result["strength"])
+        row = self.conn.execute("SELECT * FROM texts").fetchone()
+        self.assertEqual(row["body"], " ".join(s["text"] for s in sentences))
+        self.assertEqual(row["words_produced"], 3)
+        self.assertEqual(row["corrected"], 1)
+        self.assertEqual(row["errors_count"], 0)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0], 0)
+
+    def test_all_unchecked_is_not_corrected(self):
+        result = writing.finish(self.conn, [
+            sentence("She have two brothers.", ok=False,
+                     fixed="She has two brothers.", category="S-V", checked=False),
+            {"text": "Still writing this sentence."}])
+        self.assertEqual(result["unchecked"], 2)
+        self.assertEqual(result["words_produced"], 0)
+        self.assertEqual(result["errors"], [])
+        self.assertNotIn("salieron bien", result["strength"])
+        row = self.conn.execute("SELECT corrected, words_produced FROM texts").fetchone()
+        self.assertEqual(tuple(row), (0, 0))
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0], 0)
+
+    def test_only_a_literal_true_counts_as_checked(self):
+        with mock.patch.dict(os.environ, {"ENGLISHOS_DOTENV": "0"}):
+            from app import server
+        payload = server.GuidedFinish.model_validate({"sentences": [
+            {"text": "I like it.", "ok": True, "checked": True},
+            {"text": "This is unchecked.", "checked": "false"},
+            {"text": "This is also unchecked."}]})
+        with mock.patch.object(server, "get_db", return_value=self.conn):
+            result = server.writing_finish(payload)
+        self.assertEqual(result["unchecked"], 2)
+        self.assertEqual(result["words_produced"], 3)
+        self.assertIn("1 de 1", result["strength"])
+
+    def test_same_fragment_in_different_sentences_bumps_recurrences(self):
+        for ending in ("last month", "yesterday at work"):
+            writing.finish(self.conn, [sentence(
+                f"We did a mistake {ending}.", ok=False,
+                fixed=f"We made a mistake {ending}.", category="COLL")])
+        rows = self.conn.execute(
+            "SELECT original, correction, recurrences FROM errors").fetchall()
+        self.assertEqual([tuple(row) for row in rows],
+                         [("We did a mistake", "We made a mistake", 2)])
+
+    def test_case_only_change_is_not_an_error_or_an_automatic_success(self):
+        result = writing.finish(self.conn, [sentence(
+            "all good here", ok=False, fixed="All good here", category="WORD")])
+        self.assertEqual(result["errors"], [])
+        self.assertIn("0 de 1", result["strength"])
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0], 0)
 
     def test_assembles_without_calling_the_model_again(self):
         """Las oraciones ya vienen corregidas: volver a llamar sería pagar dos

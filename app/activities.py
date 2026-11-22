@@ -12,8 +12,8 @@ kinds per day:
                       (generated deterministically from the DB — no AI, no
                       latency, and it only exists because M8 imported audio)
 
-Wrong answers feed the SAME `errors` table as writing and speaking
-(`source='Activity'`), so a missed quiz item shapes tomorrow's material.
+Los fallos se conservan en las respuestas y la puntuación de la actividad;
+no son evidencia de errores de producción escrita o hablada.
 """
 
 from __future__ import annotations
@@ -381,8 +381,6 @@ def submit(conn: sqlite3.Connection, activity_id: int,
         score += 1 if correct else 0
         results.append({"correct": correct, "answer_index": q["answer_index"],
                         "why": q["why"]})
-        if not correct:
-            _record_miss(conn, q, given)
 
     conn.execute(
         "UPDATE activities SET answers=?, score=?, total=?, seconds=?, "
@@ -392,27 +390,3 @@ def submit(conn: sqlite3.Connection, activity_id: int,
     conn.commit()
     return {"id": activity_id, "score": score, "total": len(questions),
             "results": results}
-
-
-def _record_miss(conn: sqlite3.Connection, question: dict, given: int) -> None:
-    """A wrong answer is an error like any other (same table, dedup by text)."""
-    options = question.get("options", [])
-    chosen = options[given] if 0 <= given < len(options) else "—"
-    right = options[question["answer_index"]] if options else "—"
-    original = f"{question['prompt']} → {chosen}"
-    today = db.study_day()
-    existing = conn.execute(
-        "SELECT id, recurrences FROM errors WHERE category=? AND original=?",
-        (question["category"], original)).fetchone()
-    if existing:
-        conn.execute("UPDATE errors SET recurrences=?, date=?, updated_at=? "
-                     "WHERE id=?",
-                     (existing["recurrences"] + 1, today, db.now_iso(),
-                      existing["id"]))
-    else:
-        conn.execute(
-            "INSERT INTO errors (date, category, error, original, correction, "
-            "explanation, source, recurrences, created_at, updated_at) "
-            "VALUES (?,?,?,?,?,?,?,1,?,?)",
-            (today, question["category"], right, original, right,
-             question["why"], "Activity", db.now_iso(), db.now_iso()))

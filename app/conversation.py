@@ -96,7 +96,8 @@ Each correction:
     COLL  wrong word pairing (do a mistake -> make a mistake)
     TENSE wrong tense or a broken verb chain (will can -> can)
     REG   register: too formal or too casual for the situation
-    WORD  wrong word choice altogether
+    WORD  wrong word choice altogether or false friends
+    ORDER wrong word order
 - original: his exact words, and ONLY the broken part — a few words, never the
   whole sentence
 - correction: those same few words said correctly
@@ -122,7 +123,8 @@ SUMMARY_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string"},
+                    "category": {"type": "string",
+                                 "enum": list(speaking.ERROR_CATEGORIES)},
                     "original": {"type": "string"},
                     "correction": {"type": "string"},
                     "explanation": {"type": "string"},
@@ -135,7 +137,7 @@ SUMMARY_SCHEMA = {
     "required": ["corrections", "strength"],
 }
 
-CATEGORIES = {"ART", "PREP", "S-V", "COLL", "TENSE", "REG", "WORD"}
+CATEGORIES = speaking.ERROR_CATEGORIES
 
 
 CONTEXT_WORDS = 2

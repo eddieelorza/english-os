@@ -64,7 +64,11 @@ class TestState(unittest.TestCase):
             word_with_note(self.conn, "ivory", 11)
             word_with_note(self.conn, "mill", 22)
             cutover.run(self.conn)
-        self.assertTrue(cutover.revert(self.conn)["reverted"])
+        # Revertir la marca no debe instalar un LaunchAgent real durante el test.
+        with mock.patch.object(cutover, "watcher_start",
+                               return_value={"started": True}) as start:
+            self.assertTrue(cutover.revert(self.conn)["reverted"])
+            start.assert_called_once_with()
         self.assertFalse(cutover.done(self.conn))
         # la foto se conserva: borrarla no ayuda a nadie
         self.assertIsNotNone(cutover.state(self.conn)["anki_snapshot"])

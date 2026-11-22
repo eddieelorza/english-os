@@ -105,6 +105,70 @@ class TestRouting(RouterCase):
         self.assertIn("seconds", e)
 
 
+class TestNonRoutedCaps(RouterCase):
+    def setUp(self):
+        super().setUp()
+        os.environ.pop("AI_ROUTE")
+        os.environ.update(AI_PROVIDER="anthropic", AI_CLOUD_BUDGET_USD="5",
+                          AI_PRICE_IN_PER_MTOK="1", AI_PRICE_OUT_PER_MTOK="5")
+        self.paid = Fake("anthropic", usage=(1000, 2000))
+        self.use(anthropic=self.paid)
+        provider = mock.patch.object(ai, "AnthropicProvider", return_value=self.paid)
+        provider.start()
+        self.addCleanup(provider.stop)
+
+    def ask(self):
+        return ai.get_provider("reading").generate_json("s", "p", {})
+
+    def assert_daily_call_cap(self):
+        os.environ["AI_DAILY_CALLS_ANTHROPIC"] = "1"
+        provider = ai.get_provider("reading")
+        self.assertEqual((provider.name, provider.model), ("anthropic", "anthropic-model"))
+        self.assertEqual(self.ask(), {"from": "anthropic"})
+        self.assertTrue(self.log.is_file(), "la llamada de pago debe quedar registrada")
+        entry, = self.entries()
+        self.assertEqual((entry["provider"], entry["task"], entry["ok"]),
+                         ("anthropic", "reading", True))
+        self.assertEqual((entry["tokens_in"], entry["tokens_out"]), (1000, 2000))
+        self.assertAlmostEqual(entry["usd"], 0.011)
+        self.assertIn("seconds", entry)
+        with self.assertRaisesRegex(ai.AIUnavailable, "today's 1-call limit"):
+            self.ask()
+        self.assertEqual(self.paid.calls, 1)
+        self.assertEqual(len(self.entries()), 1)
+
+    def test_explicit_anthropic_logs_and_stops_at_daily_call_cap(self):
+        self.assert_daily_call_cap()
+
+    def test_auto_anthropic_logs_and_stops_at_daily_call_cap(self):
+        os.environ["AI_PROVIDER"] = "auto"
+        self.assert_daily_call_cap()
+
+    def test_anthropic_stops_at_daily_usd_cap(self):
+        os.environ["AI_DAILY_USD"] = "0.011"
+        self.ask()
+        with self.assertRaisesRegex(ai.AIUnavailable, r"today's \$0\.011 limit"):
+            self.ask()
+        self.assertEqual(self.paid.calls, 1)
+
+    def test_chain_settings_cannot_add_a_fallback_when_routing_is_off(self):
+        os.environ.update(AI_CHAIN_READING="ollama", AI_DAILY_CALLS_ANTHROPIC="1")
+        local = Fake("ollama")
+        self.use(ollama=local)
+        self.assert_daily_call_cap()
+        self.assertEqual(local.calls, 0)
+
+    def test_local_provider_remains_uncapped(self):
+        os.environ.update(AI_PROVIDER="ollama", AI_DAILY_CALLS_OLLAMA="1",
+                          AI_CLOUD_BUDGET_USD="0")
+        local = Fake("ollama")
+        with mock.patch.object(ai, "OllamaProvider", return_value=local):
+            for _ in range(3):
+                self.assertEqual(self.ask(), {"from": "ollama"})
+        self.assertEqual(local.calls, 3)
+        self.assertEqual(self.paid.calls, 0)
+
+
 class TestPaidArm(RouterCase):
     def setUp(self):
         super().setUp()

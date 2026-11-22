@@ -596,6 +596,7 @@ export interface SentenceCheck {
 /* One answered step, carried to the finish call. */
 export interface WrittenSentence extends SentenceCheck {
   text: string
+  checked: boolean
 }
 
 export interface GuidedResult {
@@ -603,6 +604,7 @@ export interface GuidedResult {
   words_produced: number
   seconds: number
   sentences: number
+  unchecked?: number
   errors: SpeakingError[]
   improved_version: string
   strength: string

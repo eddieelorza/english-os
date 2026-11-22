@@ -1,5 +1,6 @@
-"""M9 tests: activities grading feeds the error loop; listening is
-deterministic; writing correction stores tense analysis. AI is faked."""
+"""Practice conserva sus resultados sin contaminar errores de producción.
+Listening es determinista y writing guarda el análisis de tiempos, con IA falsa.
+"""
 
 from __future__ import annotations
 
@@ -93,22 +94,31 @@ class TestGrading(unittest.TestCase):
         n = self.conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0]
         self.assertEqual(n, 0)
 
-    def test_wrong_answers_feed_the_error_table(self):
-        answers = [(q["answer_index"] + 1) % 3 for q in self.quiz["questions"]]
-        r = activities.submit(self.conn, self.quiz["id"], answers)
-        self.assertEqual(r["score"], 0)
-        rows = self.conn.execute(
-            "SELECT category, source FROM errors").fetchall()
-        self.assertEqual(len(rows), len(self.quiz["questions"]))
-        self.assertTrue(all(x["source"] == "Activity" for x in rows))
-        self.assertIn("Tiempos verbales", [x["category"] for x in rows])
+    def test_wrong_answers_preserve_results_without_production_errors(self):
+        for activity in self.acts:
+            with self.subTest(kind=activity["kind"]):
+                answers = [(q["answer_index"] + 1) % 3
+                           for q in activity["questions"]]
+                r = activities.submit(self.conn, activity["id"], answers, seconds=45)
+                self.assertEqual(r["score"], 0)
+                self.assertEqual(r["total"], len(answers))
+                self.assertTrue(all(not result["correct"] for result in r["results"]))
+                row = self.conn.execute(
+                    "SELECT * FROM activities WHERE id=?", (activity["id"],)).fetchone()
+                self.assertEqual(json.loads(row["answers"]), answers)
+                self.assertEqual(row["score"], 0)
+                self.assertEqual(row["total"], len(answers))
+                self.assertEqual(row["seconds"], 45)
+                self.assertIsNotNone(row["completed_at"])
+                self.assertEqual(self.conn.execute(
+                    "SELECT COUNT(*) FROM errors").fetchone()[0], 0)
 
-    def test_repeated_miss_bumps_recurrence(self):
+    def test_repeated_miss_does_not_create_production_errors(self):
         answers = [(q["answer_index"] + 1) % 3 for q in self.quiz["questions"]]
         activities.submit(self.conn, self.quiz["id"], answers)
         activities.submit(self.conn, self.quiz["id"], answers)
-        rec = self.conn.execute("SELECT MAX(recurrences) FROM errors").fetchone()[0]
-        self.assertEqual(rec, 2)
+        self.assertEqual(self.conn.execute(
+            "SELECT COUNT(*) FROM errors").fetchone()[0], 0)
 
     def test_answer_count_must_match(self):
         with self.assertRaises(ValueError):

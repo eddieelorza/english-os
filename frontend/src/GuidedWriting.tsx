@@ -12,19 +12,69 @@ import { Button, ErrorLine, RuledSkeleton, SLIDE, Waiting, describeError, fmt } 
    the correction right there, which is the Practice drill's shape and the one
    that gets used. */
 
-/* The local record of an answered sentence. `checked` is ours, not the
-   server's: when the coach cannot be reached we keep the sentence and say so,
-   instead of stamping it "Right as it is" — a green tick nobody earned is
-   worse than no tick (M24). The wire shape stays `WrittenSentence`. */
-type Feedback = WrittenSentence & { checked: boolean }
+/* A sentence kept during an outage is evidence of writing, not correctness.
+   Carry that distinction through the draft and the finish call. */
+type Feedback = WrittenSentence
+
+const DRAFT_KEY = 'writing.guided.v1'
+
+type GuidedDraft = {
+  task: string
+  i: number
+  text: string
+  done: Feedback[]
+  feedback: Feedback | null
+}
+
+function taskIdentity(task: WritingTask) {
+  return JSON.stringify([task.scenario, task.message, task.steps.map((s) => s.ask)])
+}
+
+function isFeedback(value: unknown): value is Feedback {
+  if (value === null || typeof value !== 'object') return false
+  const s = value as Partial<Feedback>
+  return typeof s.text === 'string' && typeof s.checked === 'boolean' &&
+    typeof s.ok === 'boolean' && typeof s.fixed === 'string' &&
+    typeof s.note === 'string' && (s.category === undefined || typeof s.category === 'string')
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    /* Storage is optional; the current page still works. */
+  }
+}
+
+function readDraft(task: WritingTask): GuidedDraft | null {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
+    if (saved !== null && typeof saved === 'object') {
+      const d = saved as Partial<GuidedDraft>
+      if (d.task === taskIdentity(task) && typeof d.text === 'string' &&
+          Array.isArray(d.done) && d.done.every(isFeedback) &&
+          d.done.length <= task.steps.length &&
+          d.i === Math.min(d.done.length, task.steps.length - 1) &&
+          (d.feedback === null || (isFeedback(d.feedback) &&
+            d.done.length < task.steps.length && d.feedback.text === d.text.trim()))) {
+        return d as GuidedDraft
+      }
+    }
+  } catch {
+    /* Ignore unavailable storage and malformed drafts. */
+  }
+  clearDraft()
+  return null
+}
 
 function forServer(list: Feedback[]): WrittenSentence[] {
-  return list.map(({ ok, fixed, note, category, text }) => ({
+  return list.map(({ ok, fixed, note, category, text, checked }) => ({
     ok,
     fixed,
     note,
     category,
     text,
+    checked,
   }))
 }
 
@@ -52,18 +102,28 @@ export default function GuidedWriting({
   const [seconds, setSeconds] = useState(0)
   const timer = useRef<number | undefined>(undefined)
   const box = useRef<HTMLInputElement>(null)
+  const loadId = useRef(0)
 
   const loadTask = useCallback(() => {
+    const id = ++loadId.current
     setSetupError(null)
     setTask(null)
     setLoadingSince(Date.now())
     api
       .writingSteps()
       .then((t) => {
+        if (id !== loadId.current) return
+        const draft = readDraft(t)
+        setDone(draft?.done ?? [])
+        setI(draft?.i ?? 0)
+        setText(draft?.text ?? (t.steps[0]?.starter ? `${t.steps[0].starter} ` : ''))
+        setFeedback(draft?.feedback ?? null)
+        setCheckError(draft?.feedback && !draft.feedback.checked ? 'Sentence not checked' : null)
         setTask(t)
         setLoadingSince(null)
       })
       .catch((e: unknown) => {
+        if (id !== loadId.current) return
         setLoadingSince(null)
         setSetupError(e instanceof Error ? e.message : String(e))
       })
@@ -71,7 +131,10 @@ export default function GuidedWriting({
 
   useEffect(() => {
     loadTask()
-    return () => window.clearInterval(timer.current)
+    return () => {
+      loadId.current += 1
+      window.clearInterval(timer.current)
+    }
   }, [loadTask])
 
   const step = task?.steps[i]
@@ -80,12 +143,37 @@ export default function GuidedWriting({
      sentence that would be sent twice. */
   const atEnd = task != null && done.length >= task.steps.length
 
-  /* The starter is pre-filled, not placeholder text: he should be *continuing*
-     a sentence, never starting one. */
   useEffect(() => {
-    if (step) setText(step.starter ? `${step.starter} ` : '')
+    if (!task) return
+    const starter = task.steps[0]?.starter ? `${task.steps[0].starter} ` : ''
+    if (done.length === 0 && feedback === null && i === 0 && text === starter) {
+      clearDraft()
+      return
+    }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ task: taskIdentity(task), i, text, done, feedback }))
+    } catch {
+      /* Keep writing even when storage is unavailable or full. */
+    }
+  }, [task, i, text, done, feedback])
+
+  useEffect(() => {
     box.current?.focus()
   }, [step])
+
+  function startOver() {
+    if (!task || checking || finishing) return
+    clearDraft()
+    setDone([])
+    setI(0)
+    setText(task.steps[0]?.starter ? `${task.steps[0].starter} ` : '')
+    setFeedback(null)
+    setCheckError(null)
+    setFinishError(null)
+    window.clearInterval(timer.current)
+    timer.current = undefined
+    setSeconds(0)
+  }
 
   function startClock() {
     if (timer.current === undefined) {
@@ -135,7 +223,9 @@ export default function GuidedWriting({
     setFinishError(null)
     setFinishSince(Date.now())
     try {
-      onDone(await api.writingFinish(forServer(all), task.scenario, seconds))
+      const result = await api.writingFinish(forServer(all), task.scenario, seconds)
+      clearDraft()
+      onDone(result)
     } catch (e: unknown) {
       setFinishError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -151,6 +241,8 @@ export default function GuidedWriting({
     setFeedback(null)
     if (i + 1 < task.steps.length) {
       setI(i + 1)
+      const starter = task.steps[i + 1].starter
+      setText(starter ? `${starter} ` : '')
       return
     }
     await finish(all)
@@ -334,6 +426,10 @@ export default function GuidedWriting({
             <Waiting since={finishSince}>The coach is reading your whole reply…</Waiting>
           )}
 
+          {atEnd && !finishing && finishError === null && (
+            <Button onClick={() => void finish(done)}>Finish</Button>
+          )}
+
           {/* The close failed. The sentences are still here, and Try again
               sends them as they are — this is not the setup talking. */}
           {finishError !== null && !finishing && (
@@ -357,6 +453,11 @@ export default function GuidedWriting({
             {done.map((s) => (s.checked && s.fixed) || s.text).join(' ')}
           </p>
         </div>
+      )}
+      {(done.length > 0 || feedback !== null) && (
+        <Button variant="text" onClick={startOver} disabled={checking || finishing} className="mt-6">
+          Start over
+        </Button>
       )}
     </section>
   )

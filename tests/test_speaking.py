@@ -28,6 +28,52 @@ FAKE_CORRECTION = {
 }
 
 
+class TestCategories(unittest.TestCase):
+    def test_codes_and_aliases_normalize(self):
+        for code in ("ART", "PREP", "S-V", "COLL", "TENSE", "REG", "WORD", "ORDER"):
+            with self.subTest(code=code):
+                self.assertEqual(speaking.normalize_category(code), code)
+                self.assertEqual(speaking.normalize_category(f"  {code.lower()}\t"), code)
+        aliases = {"Artículos": "ART", "Preposiciones": "PREP",
+                   "Concordancia": "S-V", "Tiempos verbales": "TENSE",
+                   "Colocación": "COLL", "Registro": "REG", "Vocabulario": "WORD",
+                   "Falsos amigos": "WORD", "Orden de palabras": "ORDER"}
+        for alias, code in aliases.items():
+            with self.subTest(alias=alias):
+                raw = "  " + alias.upper().replace(" ", " \t ") + "\n"
+                self.assertEqual(speaking.normalize_category(raw), code)
+        for unknown in ("GRAMMAR", "", None):
+            self.assertIsNone(speaking.normalize_category(unknown))
+
+    def test_unknown_category_is_not_stored_or_counted(self):
+        conn = db.connect(":memory:")
+        self.addCleanup(conn.close)
+        error = {"category": "GRAMMAR", "original": "bad", "correction": "good",
+                 "explanation": "x"}
+        self.assertEqual(speaking._store_errors(conn, [error]), 0)
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM errors").fetchone()[0], 0)
+
+    def test_alias_and_code_share_recurrences(self):
+        conn = db.connect(":memory:")
+        self.addCleanup(conn.close)
+        error = {"category": "Preposiciones", "original": "work in a feature",
+                 "correction": "work on a feature", "explanation": "x"}
+        self.assertEqual(speaking._store_errors(conn, [error]), 1)
+        self.assertEqual(speaking._store_errors(conn, [{**error, "category": " prep "}]), 1)
+        rows = conn.execute("SELECT category, recurrences FROM errors").fetchall()
+        self.assertEqual([tuple(row) for row in rows], [("PREP", 2)])
+
+    def test_correction_schemas_share_the_canonical_codes(self):
+        from app import conversation, writing
+        for schema, field in ((speaking.CORRECTION_SCHEMA, "errors"),
+                              (writing.CORRECTION_SCHEMA, "errors"),
+                              (conversation.SUMMARY_SCHEMA, "corrections")):
+            category = schema["properties"][field]["items"]["properties"]["category"]
+            self.assertEqual(category["enum"], list(speaking.ERROR_CATEGORIES))
+        self.assertEqual(writing.CHECK_SCHEMA["properties"]["category"]["enum"],
+                         [*speaking.ERROR_CATEGORIES, ""])
+
+
 class TestSubmit(unittest.TestCase):
     def setUp(self):
         self.conn = db.connect(":memory:")
@@ -68,7 +114,7 @@ class TestSubmit(unittest.TestCase):
         from app import model
         self.run_submit()
         cats = model.errors(self.conn)["top_categories"]
-        self.assertIn("Tiempos verbales", cats)
+        self.assertIn("TENSE", cats)
 
     def test_silent_recording_rejected(self):
         with mock.patch.object(speaking, "transcribe",

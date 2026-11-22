@@ -392,7 +392,7 @@ class Router(AIProvider):
     the next one, so the free tier running dry means "slower", never "broken"."""
     name = "router"
 
-    def __init__(self, task: "str | None") -> None:
+    def __init__(self, task: "str | None", chain: "list[str] | None" = None) -> None:
         self.task = task or "general"
         kind = ("local" if self.task in LOCAL_ONLY_TASKS else
                 "generate" if self.task in GENERATE_TASKS else "personal")
@@ -403,9 +403,14 @@ class Router(AIProvider):
             os.environ.get(f"AI_CHAIN_{self.task.upper()}")
             or os.environ.get(f"AI_CHAIN_{kind.upper()}", default))
         self.kind = kind
-        self.chain = [n.strip().lower() for n in raw.split(",")
-                      if n.strip().lower() in ("ollama", "gemini", "anthropic")]
+        self.chain = chain if chain is not None else [
+            n.strip().lower() for n in raw.split(",")
+            if n.strip().lower() in ("ollama", "gemini", "anthropic")]
         self.model = ""
+        if chain is not None and len(chain) == 1:
+            # Sin rutas, conserva la identidad del proveedor para status().
+            self.name = chain[0]
+            self.model = _provider(chain[0]).model
 
     def available(self) -> bool:
         return any(_provider(n).available() for n in self.chain)
@@ -461,11 +466,11 @@ class Router(AIProvider):
 # ── Factory ──────────────────────────────────────────────────────────────
 
 def get_provider(task: "str | None" = None) -> AIProvider:
-    """Resolve the configured provider or raise AIUnavailable.
+    """Resuelve el proveedor configurado o lanza AIUnavailable.
 
-    `task` names what is being asked for ("reading", "conversation"…). It only
-    matters with `AI_ROUTE=on`; otherwise the single-provider behaviour below
-    is exactly what it always was.
+    `task` identifica el trabajo para el log y, con `AI_ROUTE=on`, su cadena.
+    Sin rutas, Anthropic usa una cadena de un solo proveedor para conservar
+    los mismos topes y el registro de gasto, sin añadir alternativas.
     """
     if os.environ.get("AI_ROUTE", "").strip().lower() == "on":
         router = Router(task)
@@ -475,7 +480,7 @@ def get_provider(task: "str | None" = None) -> AIProvider:
                 f"({', '.join(router.chain) or 'empty'}).")
         return router
     choice = os.environ.get("AI_PROVIDER", "auto").strip().lower()
-    anthropic_p = AnthropicProvider()
+    anthropic_p = _provider("anthropic")
     ollama_p = OllamaProvider()
 
     if choice == "anthropic":
@@ -483,7 +488,7 @@ def get_provider(task: "str | None" = None) -> AIProvider:
             raise AIUnavailable(
                 "Anthropic selected but no credentials found "
                 "(set ANTHROPIC_API_KEY in .env, or run `ant auth login`).")
-        return anthropic_p
+        return Router(task, chain=["anthropic"])
     if choice == "ollama":
         if not ollama_p.available():
             raise AIUnavailable(
@@ -492,7 +497,7 @@ def get_provider(task: "str | None" = None) -> AIProvider:
         return ollama_p
     # auto
     if anthropic_p.available():
-        return anthropic_p
+        return Router(task, chain=["anthropic"])
     if ollama_p.available():
         return ollama_p
     raise AIUnavailable(

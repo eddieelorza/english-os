@@ -195,12 +195,26 @@ def streak(conn: sqlite3.Connection) -> int:
     away should never be punished."""
     from app import pause  # local import: pause imports db, not model
     active = {r[0] for r in conn.execute("SELECT date FROM sessions")}
+    active |= {r[0] for r in conn.execute(
+        "SELECT date FROM texts WHERE kind IN ('writing','speaking')")}
     # Un repaso a las 00:30 pertenece al día de estudio anterior, no a uno
     # nuevo: sin restar la hora de corte, trasnochar parte la racha en dos
     # (M17a). El desplazamiento se hace en SQL sobre el sello local guardado.
     active |= {r[0] for r in conn.execute(
         "SELECT DISTINCT substr(datetime(reviewed_at, ?), 1, 10) "
         "FROM review_history WHERE source='fsrs'",
+        (f"-{db.rollover_hour()} hours",))}
+    # Una actividad cuenta el día en que se terminó, no el día para el que se
+    # generó: terminar hoy la de ayer no repara la racha de ayer.
+    active |= {r[0] for r in conn.execute(
+        "SELECT DISTINCT substr(datetime(completed_at, ?), 1, 10) "
+        "FROM activities WHERE completed_at IS NOT NULL",
+        (f"-{db.rollover_hour()} hours",))}
+    # Cuenta el día en que habló el alumno, aunque abriera la conversación
+    # antes; el saludo del compañero por sí solo no es evidencia de estudio.
+    active |= {r[0] for r in conn.execute(
+        "SELECT DISTINCT substr(datetime(created_at, ?), 1, 10) "
+        "FROM conversation_turns WHERE speaker='eddie'",
         (f"-{db.rollover_hour()} hours",))}
     skip = pause.paused_days(conn)
 

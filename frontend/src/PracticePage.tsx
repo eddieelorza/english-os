@@ -131,6 +131,8 @@ export default function PracticePage() {
 /* ── The drill ─────────────────────────────────────────────────────────── */
 
 type Step = { activity: Activity; q: Question; qi: number; setIndex: number }
+type SetSubmission = { id: number; setIndex: number; answers: number[]; seconds: number }
+type SetSave = SetSubmission & { error: string | null; saving: boolean }
 
 function Drill({ activities, tip }: { activities: Activity[]; tip: GrammarTip | null }) {
   const steps: Step[] = useMemo(
@@ -146,12 +148,36 @@ function Drill({ activities, tip }: { activities: Activity[]; tip: GrammarTip | 
   /* One slot per step: null until answered, then the option index. */
   const [answers, setAnswers] = useState<(number | null)[]>(() => steps.map(() => null))
   const [done, setDone] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  const [saves, setSaves] = useState<SetSave[]>([])
+  const saving = useRef(new Set<number>())
   const started = useRef(Date.now())
   const setStarted = useRef(Date.now())
 
   const step = steps[i]
   const last = i === steps.length - 1
   const correct = picked != null && picked === step?.q.answer_index
+
+  const saveSet = useCallback(async (submission: SetSubmission) => {
+    if (saving.current.has(submission.id)) return
+    saving.current.add(submission.id)
+    setSaves((prev) => [
+      ...prev.filter((s) => s.id !== submission.id),
+      { ...submission, error: prev.find((s) => s.id === submission.id)?.error ?? null, saving: true },
+    ].sort((a, b) => a.setIndex - b.setIndex))
+    try {
+      await api.activitySubmit(submission.id, submission.answers, submission.seconds)
+      setSaves((prev) => prev.filter((s) => s.id !== submission.id))
+    } catch (e: unknown) {
+      const error = describeError(
+        e instanceof Error ? e.message : String(e),
+        'Your answers are still here, but this set could not be saved to your record.',
+      )
+      setSaves((prev) => prev.map((s) => s.id === submission.id ? { ...s, error, saving: false } : s))
+    } finally {
+      saving.current.delete(submission.id)
+    }
+  }, [])
 
   const submitSet = useCallback(
     (setIndex: number, all: (number | null)[]) => {
@@ -162,31 +188,31 @@ function Drill({ activities, tip }: { activities: Activity[]; tip: GrammarTip | 
       if (mine.some((v) => v == null)) return
       const seconds = Math.round((Date.now() - setStarted.current) / 1000)
       setStarted.current = Date.now()
-      /* Fire and forget: the score is already on screen, and a failed save
-         must not interrupt a session in progress. */
-      api.activitySubmit(activity.id, mine as number[], seconds).catch(() => undefined)
+      /* Save in the background, retaining this exact attempt for a retry
+         without interrupting the next question. */
+      void saveSet({ id: activity.id, setIndex, answers: mine as number[], seconds })
     },
-    [activities, steps],
+    [activities, steps, saveSet],
   )
 
   const pick = useCallback(
     (oi: number) => {
       if (picked != null || !step) return
       setPicked(oi)
-      setAnswers((prev) => {
-        const next = prev.map((p, n) => (n === i ? oi : p))
-        const lastOfSet = !steps[i + 1] || steps[i + 1].setIndex !== step.setIndex
-        if (lastOfSet) submitSet(step.setIndex, next)
-        return next
-      })
+      const next = answers.map((p, n) => (n === i ? oi : p))
+      setAnswers(next)
+      const lastOfSet = !steps[i + 1] || steps[i + 1].setIndex !== step.setIndex
+      if (lastOfSet) submitSet(step.setIndex, next)
     },
-    [picked, step, i, steps, submitSet],
+    [picked, step, i, steps, submitSet, answers],
   )
 
   const advance = useCallback(() => {
     if (picked == null) return
-    if (last) setDone(true)
-    else setI((n) => n + 1)
+    if (last) {
+      setElapsed(Math.round((Date.now() - started.current) / 1000))
+      setDone(true)
+    } else setI((n) => n + 1)
     setPicked(null)
   }, [picked, last])
 
@@ -218,8 +244,10 @@ function Drill({ activities, tip }: { activities: Activity[]; tip: GrammarTip | 
       <Result
         steps={steps}
         answers={answers}
-        seconds={Math.round((Date.now() - started.current) / 1000)}
+        seconds={elapsed}
         tip={tip}
+        saves={saves}
+        onRetry={saveSet}
       />
     )
 
@@ -356,11 +384,15 @@ function Result({
   answers,
   seconds,
   tip,
+  saves,
+  onRetry,
 }: {
   steps: Step[]
   answers: (number | null)[]
   seconds: number
   tip: GrammarTip | null
+  saves: SetSave[]
+  onRetry: (submission: SetSubmission) => Promise<void>
 }) {
   const score = steps.filter((s, n) => answers[n] === s.q.answer_index).length
   const missed = steps.filter((s, n) => answers[n] !== s.q.answer_index)
@@ -384,6 +416,24 @@ function Result({
           minute{minutes === 1 ? '' : 's'}.
         </p>
 
+        {saves.map((s) => (
+          <div key={s.id}>
+            {s.error !== null && (
+              <ErrorLine
+                onRetry={s.saving ? undefined : () => void onRetry(s)}
+                retryLabel={`Retry saving set ${fmt(s.setIndex + 1)}`}
+              >
+                Set {fmt(s.setIndex + 1)} was not saved. {s.error}
+              </ErrorLine>
+            )}
+            {s.saving && (
+              <p role="status" className="font-book text-ghost mt-4 text-sm italic">
+                Saving set {fmt(s.setIndex + 1)}…
+              </p>
+            )}
+          </div>
+        ))}
+
         {missed.length > 0 && (
           <div className="mt-6">
             <h3 className="border-rule-strong text-ghost border-b pb-1 text-xs font-semibold tracking-label uppercase">
@@ -404,7 +454,7 @@ function Result({
             </ul>
             {missed.length > 4 && (
               <p className="text-ghost mt-3 text-xs italic">
-                …and {fmt(missed.length - 4)} more, filed in today’s practice.
+                …and {fmt(missed.length - 4)} more in today’s practice.
               </p>
             )}
           </div>
