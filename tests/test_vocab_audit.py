@@ -219,7 +219,12 @@ class TestPropose(AuditCase):
                 ({"imageable": "true"}, "booleano"),
                 ({"second": {}}, "second necesita"),
                 ({"second": {**SECOND, "example_es": ""}}, "second necesita"),
-                ({"second": {**SECOND, "example_en": "The plane was full."}}, "raíz")):
+                ({"second": {**SECOND, "example_en": "The plane was full."}}, "raíz"),
+                # Casos reales: «nowhere» → «no se encontraba», «pat» → «dar un poco»,
+                # «defeat» con un segundo sentido que su ejemplo no usa.
+                ({"gloss_es": "se quedaron"}, "forma de diccionario"),
+                ({"pos": "verb", "gloss_es": "quedarse un poco"}, "relleno"),
+                ({"second": {**SECOND, "gloss_es": "choza"}}, "second.gloss_es no aparece")):
             with self.subTest(bad=bad):
                 result, fake = self.propose(answer(**bad), answer())
                 self.assertEqual(result["proposed"], 1)

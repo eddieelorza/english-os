@@ -16,12 +16,16 @@ Propones una reparación de la glosa de una tarjeta; el alumno decidirá.
 Regla dura: gloss_es es la palabra o frase corta EN ESPAÑOL (máximo 4
 palabras) que la traducción de ESTE ejemplo usa para la palabra inglesa,
 en forma de diccionario (infinitivo para verbos). No elijas otra acepción.
+Forma de diccionario: nunca la frase copiada; sin «no» ni pronombres
+delante; un verbo lleva sólo el infinitivo y las palabras que forman parte
+de su significado («dar palmaditas», «alardear de»), sin relleno.
 Si falta la traducción, usa el sentido del ejemplo inglés.
 pos: noun, verb, adjective, adverb, phrase u other.
 definition_en: definición en inglés sencillo, de 6 a 14 palabras, sin usar
 la palabra definida ni sus derivados; una frase sin punto final. Empieza
 con 'to' para verbos, 'a' o 'the' para sustantivos. No un sinónimo suelto.
-note_es: una línea corta sobre una trampa para hispanohablantes, o vacío.
+note_es: una línea corta sobre una trampa para hispanohablantes (falso
+amigo, uso distinto al del español), no sobre el registro del inglés; o vacío.
 imageable: true si una imagen puede mostrarlo (objeto concreto o acción),
 false si no.
 second: sólo si hay otra acepción frecuente que un alumno B1–B2 encontrará;
@@ -95,6 +99,10 @@ def candidates(conn: sqlite3.Connection, limit: "int | None" = None) -> list:
             ("no_gloss", "gloss_not_in_example"))][:limit]
 
 
+_LEADING = {"no", "se", "me", "te", "le", "les", "nos"}
+_FILLER = {"un", "una", "unos", "unas", "poco", "algo"}
+
+
 def _gloss_problem(gloss) -> "str | None":
     if not isinstance(gloss, str) or not gloss.strip():
         return "gloss_es vacía"
@@ -113,6 +121,11 @@ def _problem(result, row) -> "str | None":
     if "gloss_not_in_example" in flags({
             "meaning_es": result["gloss_es"], "example_es": row["example_es"]}):
         return "gloss_not_in_example: gloss_es no aparece en example_es"
+    # La regla del ejemplo también premia copiar la frase («no se encontraba»).
+    # ponytail: rechaza también «no obstante»; esas se omiten, no se enseñan mal.
+    tokens = [glossary._fold(t) for t in result["gloss_es"].split()]
+    if tokens[0] in _LEADING:
+        return "gloss_es no está en forma de diccionario: parece copiada de la frase"
     definition = result.get("definition_en")
     if not isinstance(definition, str):
         return "definition_en debe ser texto"
@@ -130,6 +143,9 @@ def _problem(result, row) -> "str | None":
             head = head[:-2]
         if not head.endswith(("ar", "er", "ir")):
             return "gloss_es de un verbo debe ir en infinitivo"
+        # ponytail: también cae «dar un paseo»; se omite antes que «dar un poco».
+        if _FILLER & set(tokens[1:]):
+            return "gloss_es de un verbo lleva relleno («un», «poco», «algo»)"
     if not isinstance(result.get("imageable"), bool):
         return "imageable debe ser booleano"
     if not isinstance(result.get("note_es"), str):
@@ -143,6 +159,12 @@ def _problem(result, row) -> "str | None":
         word = glossary._fold(row["word"])
         if word[:max(3, len(word) - 2)] not in glossary._fold(second["example_en"]):
             return "second.example_en no contiene la palabra (raíz)"
+        why = _gloss_problem(second["gloss_es"])
+        if why:
+            return f"second.{why}"
+        if "gloss_not_in_example" in flags({
+                "meaning_es": second["gloss_es"], "example_es": second["example_es"]}):
+            return "second.gloss_es no aparece en second.example_es"
     return None
 
 
