@@ -47,7 +47,9 @@ def _load_env() -> None:
     un test o una herramienta hayan puesto a propósito.
     """
     env = BASE_DIR / ".env"
-    if not env.is_file():
+    # Los tests lo apagan: si no, tus claves y cadenas reales se cuelan en
+    # toda la suite desde el primer test que importa este módulo.
+    if os.environ.get("ENGLISHOS_DOTENV") == "0" or not env.is_file():
         return
     for line in env.read_text().splitlines():
         line = line.strip()

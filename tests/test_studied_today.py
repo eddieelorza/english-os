@@ -33,6 +33,7 @@ class TestStudiedToday(unittest.TestCase):
         self.path = str(Path(self.tmp.name) / "t.db")
         os.environ["ENGLISH_DB_PATH"] = self.path
         self.conn = db.connect(self.path)
+        os.environ["ENGLISHOS_DOTENV"] = "0"   # que importar server no cargue el .env real
         from app import server
 
         # Sin este parche, el hook de arranque del servidor lanza el hilo

@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+os.environ["ENGLISHOS_DOTENV"] = "0"   # que importar server no cargue el .env real
 try:
     from fastapi.testclient import TestClient
 except ImportError:
