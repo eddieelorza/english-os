@@ -44,9 +44,11 @@
   <key>LowPriorityIO</key>
   <true/>
 
+  <!-- Fuera de ~/Desktop: tras un reinicio launchd no puede reabrir un log
+       que ya existía ahí y sale con 78 sin arrancar nada. -->
   <key>StandardOutPath</key>
-  <string>__PROJECT__/logs/englishos.out.log</string>
+  <string>__LOGS__/englishos.out.log</string>
   <key>StandardErrorPath</key>
-  <string>__PROJECT__/logs/englishos.err.log</string>
+  <string>__LOGS__/englishos.err.log</string>
 </dict>
 </plist>

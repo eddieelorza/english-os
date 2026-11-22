@@ -13,6 +13,7 @@ LABEL="com.eddieelorza.englishos"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 APP="$HOME/Applications/English OS.app"
 PORT=8771
+LOGS="$HOME/Library/Logs/EnglishOS"
 
 if [[ "${1:-install}" == "uninstall" ]]; then
   launchctl bootout "gui/$UID/$LABEL" 2>/dev/null || true
@@ -29,8 +30,8 @@ if [[ ! -f "$PROJECT/frontend/dist/index.html" ]]; then
   npm run build --prefix "$PROJECT/frontend"
 fi
 
-mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Applications" "$PROJECT/logs"
-sed "s|__PROJECT__|$PROJECT|g" "$PROJECT/scripts/englishos.plist.template" > "$PLIST"
+mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Applications" "$LOGS"
+sed -e "s|__PROJECT__|$PROJECT|g" -e "s|__LOGS__|$LOGS|g" "$PROJECT/scripts/englishos.plist.template" > "$PLIST"
 
 # bootout antes de bootstrap: recargar sin descargar deja la definición vieja.
 # Y hay que ESPERAR a que se vaya: bootout es asíncrono, y un bootstrap
@@ -80,7 +81,7 @@ for _ in \$(seq 1 120); do
   fi
   sleep 0.25
 done
-osascript -e 'display alert "English OS no arrancó" message "Mira logs/englishos.err.log en el proyecto."'
+osascript -e 'display alert "English OS no arrancó" message "Mira $LOGS/englishos.err.log"'
 exit 1
 LAUNCHER
 chmod +x "$APP/Contents/MacOS/englishos"
@@ -100,8 +101,8 @@ done
 if [[ $up -eq 0 ]]; then
   echo
   echo "el agente está instalado pero NO respondió en 30 s." >&2
-  echo "mira $PROJECT/logs/englishos.err.log" >&2
-  tail -5 "$PROJECT/logs/englishos.err.log" 2>/dev/null | sed 's/^/  /' >&2
+  echo "mira $LOGS/englishos.err.log" >&2
+  tail -5 "$LOGS/englishos.err.log" 2>/dev/null | sed 's/^/  /' >&2
   exit 1
 fi
 
