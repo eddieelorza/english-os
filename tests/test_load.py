@@ -5,11 +5,13 @@ fichero temporal."""
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 try:
@@ -22,12 +24,23 @@ from app import db  # noqa: E402
 IRREGULAR = [27, 25, 22, 20, 18, 15, 13, 11, 8, 6, 4, 1]      # 2-3 días/semana
 
 
+def setUpModule():
+    # Lo repasado «ayer» vence hoy a la misma hora. Con la historia a una hora
+    # fija, correr las pruebas antes de esa hora dejaba el presupuesto en 0.
+    # El día de estudio empieza aquí 3 h antes de ahora: siempre ya venció.
+    patch = mock.patch.dict(os.environ, {
+        "STUDY_DAY_ROLLOVER_HOUR": str((datetime.now().hour - 3) % 24)})
+    patch.start()
+    unittest.addModuleCleanup(patch.stop)
+
+
 def at(days_ago: int, minute: int = 0) -> datetime:
-    # Anclado al DÍA DE ESTUDIO (empieza a las 4:00), no al calendario: entre
-    # las 00:00 y las 04:00 "ayer" del calendario es el mismo día de estudio
-    # que "hoy" y las pruebas contaban un día de menos.
+    # Anclado al DÍA DE ESTUDIO, no al calendario: antes del cambio de día
+    # "ayer" del calendario es el mismo día de estudio que "hoy" y las pruebas
+    # contaban un día de menos.
     day = datetime.fromisoformat(db.study_day()) - timedelta(days=days_ago)
-    return (day.replace(hour=10) + timedelta(minutes=minute)).astimezone(timezone.utc)
+    return (day.replace(hour=db.rollover_hour()) + timedelta(minutes=minute)
+            ).astimezone(timezone.utc)
 
 
 def study_day(conn, days_ago, new=5, fail_every=4, cap=40):
@@ -462,7 +475,8 @@ class TestNotEnoughHistory(unittest.TestCase):
         conn.execute(
             "INSERT INTO pauses (start_date, end_date, reason, created_at) "
             "VALUES (?,?,?,?)",
-            (at(17).date().isoformat(), at(16).date().isoformat(), "trip",
+            (at(17).astimezone().date().isoformat(),
+             at(16).astimezone().date().isoformat(), "trip",
              db.now_iso()))
         self.assertGreater(load.rhythm(conn)["rate"], rate)
 
