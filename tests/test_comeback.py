@@ -387,7 +387,9 @@ class TestFailBrake(unittest.TestCase):
         b = session.brake(self.conn)
         self.assertTrue(b["on"])
         self.assertEqual((b["again"], b["reviews"]), (7, 16))
-        self.assertEqual(session.limits(self.conn), {"new": 0, "reviews": 0})
+        # Sólo la escalera: las 7 falladas, nada vencido ni nuevo.
+        self.assertEqual(session.limits(self.conn),
+                         {"new": 0, "reviews": 7, "ladder_only": True})
 
     def test_the_failed_words_are_still_finished(self):
         self._answer([3] * 9 + [1] * 7)

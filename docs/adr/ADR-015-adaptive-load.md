@@ -54,6 +54,17 @@ terminar la escalera abierta (coste medido). Agotado, tampoco la escalera.
 Lo que quede a medias **no se esconde ni se reinicia**: sigue vencido con su
 estado FSRS real y abre la siguiente sentada.
 
+**Revisado 2026-11-21 — la escalera se termina siempre.** Medido en 60 días:
+una fallada que volvía en la misma sentada se acertaba el 52-63%; la que se
+iba a otro día, el 9% — y se iba casi la mitad. Tres fugas: el corte de este
+D2, Hard en reaprendizaje (15 min) fuera de una ventana de 10, y la ventana
+de 3 min mientras quedaba otra cosa. Ahora: agotado el presupuesto (o con el
+freno), sólo se sirve la escalera; las falladas vuelven tras
+`srs.AFTER_CARDS` tarjetas, por delante de lo vencido; sin nada más, dos
+falladas se turnan y sólo la última contestada espera (como mucho el paso
+corto). La noria la acota `srs.MAX_AGAIN_PER_DAY`. A medir en 2 semanas:
+recall de los pasos `learn`/`relearn` (37% / 71% antes del cambio).
+
 ### D3 — El reparto sigue su ritmo
 `backlog._placement(rate)`: lo agendado hasta el día *d* no pasa de
 `cap × ritmo × d`. Con 10 cards/sentada y ritmo 0.4, a los 3 días esperan ≤12
@@ -117,8 +128,9 @@ no devolvió coincidencia verificada: es criterio general, no una cita.
 - **Aplazar no es aprender.** Una carga menor con rezago grande significa
   repasos más tardíos y más palabras que pasan a "volviendo". Se ve en
   `days_late`, en `backlog.comeback_recall` y en la propia explicación.
-- **Cortar la escalera** deja palabras falladas sin repetir hoy; mañana
-  llegan con R baja. A cambio la sentada termina cuando dijo.
+- **Terminar la escalera** (rev. 2026-11-21) alarga la sentada unas
+  respuestas más allá del presupuesto. A cambio ninguna fallada se va sin
+  reintento.
 - **El techo es su hábito, no su capacidad.** Si su hábito era excesivo, el
   techo también lo es; lo que de verdad reduce la carga es la cuenta de D1.
 - **El grupo** puede dejarlo semanas sin palabras nuevas si no consolida. Es

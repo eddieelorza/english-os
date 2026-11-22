@@ -37,14 +37,21 @@ NEW_PER_DAY = 5  # matches Eddie's real Anki cadence (learner_profile history)
 #   acababas de ACERTAR volvía enseguida, la sentada se alimentaba sola y un
 #   plan de 9 cards se iba a 16.
 # - Cuando ya NO queda nada más, la ventana se abre hasta cubrir la escalera
-#   de aprendizaje entera (`deck.longest_step_minutes`). Con 3 minutos fijos,
+#   de aprendizaje entera (`deck.ladder_reach_minutes`). Con 3 minutos fijos,
 #   una card en el paso de 10 min era invisible: la app decía "nothing to
 #   study" con trabajo pendiente y la palabra reaparecía un rato después.
 #   Esperar mirando una pantalla vacía no enseña nada.
 #
 # La regla se lee sola: el reloj manda mientras haya alternativa; cuando no
 # la hay, no hay nada que esperar.
+#
+# Rev. 2026-11-21 — las FALLADAS (Again/Hard) no esperan al reloj: vuelven
+# tras `AFTER_CARDS` tarjetas, antes que lo vencido y lo nuevo. Medido en 60
+# días: una fallada que volvía en la misma sentada se acertaba el 52-63%; la
+# que se escapaba a otro día, el 9% — y se escapaba casi la mitad, porque su
+# paso de 10-15 min no cabía en la ventana de 3 mientras quedaba otra cosa.
 LEARN_AHEAD_MINUTES = 3
+AFTER_CARDS = 3
 
 # fsrs serialises Card.state as an int; 1 = Learning, 3 = Relearning.
 _UNLEARNED_STATES = (int(State.Learning), int(State.Relearning))
@@ -227,19 +234,37 @@ def _introduced_today(conn: sqlite3.Connection) -> int:
 # json_extract: para eso se promovió la columna en M17a, y así entra el índice.
 # WHERE y ORDER BY van separados para poder contar sin ordenar.
 _WHERE_DUE = "FROM words WHERE fsrs_due IS NOT NULL AND fsrs_due <= ?"
-_WHERE_LEARNING = ("FROM words WHERE fsrs_due > ? AND fsrs_due <= ? "
-                   "AND card_state IN ('LEARNING','RELEARNING') "
-                   # El suelo de enfriamiento: una card contestada hace
-                   # menos del paso más corto no se adelanta. Sin esto
-                   # "vuelve en 1 minuto" se cumplía en 2 segundos.
-                   "AND (last_reviewed_on IS NULL OR last_reviewed_on <= ?)")
-# La escalera entera, sin el suelo: lo que sigue sin aprenderse, se pueda
+# La escalera entera, sin suelo: lo que sigue sin aprenderse, se pueda
 # servir ahora o no. Es lo que cuentan los contadores y lo que lista la
 # muestra de ids — si la muestra usara el suelo, diría "1 pendiente" y
-# devolvería una lista vacía.
+# devolvería una lista vacía. Args: (now, wide_until).
 _WHERE_LADDER = ("FROM words WHERE fsrs_due > ? AND fsrs_due <= ? "
                  "AND card_state IN ('LEARNING','RELEARNING')")
 _SQL_LADDER = f"{_WHERE_LADDER} ORDER BY fsrs_due"
+# El suelo: una card no vuelve pegada a sí misma. Contestar al instante no
+# prueba memoria — sube la dificultad y hunde la estabilidad (bug del
+# 2026-08-24: seis respuestas en 55 s). Basta con que hayan pasado
+# `AFTER_CARDS` tarjetas o el paso más corto. Args: (AFTER_CARDS, cool_since).
+# Se cuenta por `id`, no por hora: `reviewed_at` tiene resolución de segundo
+# y dos respuestas del mismo segundo empatarían.
+_SPACED = ("((SELECT COUNT(*) FROM review_history r WHERE r.id > "
+           "  (SELECT MAX(id) FROM review_history WHERE word_id = words.id)) >= ? "
+           " OR words.last_reviewed_on IS NULL OR words.last_reviewed_on <= ?)")
+_FAILED = ("(SELECT r.rating FROM review_history r WHERE r.word_id = words.id "
+           " ORDER BY r.id DESC LIMIT 1) <= 2")
+# Con prioridad: las falladas ya espaciadas, y las acertadas cuyo paso
+# vence en la ventana corta. Args: (now, wide_until, AFTER_CARDS, cool_since,
+# ahead_until).
+_WHERE_LEARNING = (f"{_WHERE_LADDER} AND {_SPACED} "
+                   f"AND (fsrs_due <= ? OR {_FAILED})")
+# Sin nada más que hacer: cualquier card de la escalera menos la que se
+# acaba de contestar — dos falladas se alternan en vez de esperar un
+# contador. Sólo espera la última que queda, y como mucho el paso más corto.
+# Args: (now, wide_until, AFTER_CARDS, cool_since).
+_LAST_ANSWERED = ("words.id = "
+                  "(SELECT word_id FROM review_history ORDER BY id DESC LIMIT 1)")
+_WHERE_FALLBACK = f"{_WHERE_LADDER} AND ({_SPACED} OR NOT {_LAST_ANSWERED})"
+_WHERE_COOLING = f"{_WHERE_LADDER} AND NOT ({_SPACED} OR NOT {_LAST_ANSWERED})"
 
 _WHERE_NEW = ("FROM words WHERE fsrs_card IS NULL AND status='NEW' "
               "AND meaning_es IS NOT NULL")
@@ -265,6 +290,7 @@ _SQL_DUE_LADDER = f"{_WHERE_DUE_LADDER} {_ORDER_BY_RECALL}"
 COMEBACK_AFTER = 5
 COMEBACK_EVERY = 4
 _SQL_LEARNING = f"{_WHERE_LEARNING} ORDER BY fsrs_due"
+_SQL_FALLBACK = f"{_WHERE_FALLBACK} ORDER BY last_reviewed_on, fsrs_due"
 # Primero las que ya encontró leyendo (ADR-014 Fase 3): una palabra vista en
 # una historia entra con contexto; una suelta del mazo de Anki, a 5 s la card,
 # es la que luego acierta el 45% en los pasos de aprendizaje.
@@ -308,25 +334,24 @@ def _buckets(conn: sqlite3.Connection, new_per_day: int,
         (now,)).fetchone()[0]
     local_now = now_dt.astimezone().replace(tzinfo=None).isoformat(
         timespec="seconds")
-    learning = conn.execute(f"SELECT COUNT(*) {_WHERE_LEARNING}",
-                            (now, ahead_until, cool_since)).fetchone()[0]
-    # La ventana ancha: toda la escalera de aprendizaje. Sólo se usa cuando no
-    # queda nada más, pero se cuenta siempre para poder decir la verdad en la
-    # pantalla de "no queda nada".
+    # La ventana ancha: toda la escalera de aprendizaje, Hard incluido.
     wide_until = (now_dt + timedelta(
-        minutes=max(LEARN_AHEAD_MINUTES, deck.longest_step_minutes(conn))
+        minutes=max(LEARN_AHEAD_MINUTES, deck.ladder_reach_minutes(conn))
     )).isoformat()
-    wide_args = (now, wide_until, cool_since)
-    learning_wide = conn.execute(f"SELECT COUNT(*) {_WHERE_LEARNING}",
+    learn_args = (now, wide_until, AFTER_CARDS, cool_since, ahead_until)
+    learning = conn.execute(f"SELECT COUNT(*) {_WHERE_LEARNING}",
+                            learn_args).fetchone()[0]
+    # Lo que se sirve cuando no queda nada más. Se cuenta siempre para poder
+    # decir la verdad en la pantalla de "no queda nada".
+    wide_args = (now, wide_until, AFTER_CARDS, cool_since)
+    learning_wide = conn.execute(f"SELECT COUNT(*) {_WHERE_FALLBACK}",
                                  wide_args).fetchone()[0]
-    # Las que están enfriándose: siguen pendientes, sólo que todavía no. La
-    # pantalla las necesita para decir "vuelve en 0:38" en vez de "no queda
-    # nada", que es mentira y expulsa de la sentada.
+    # La que se está enfriando: la última contestada, cuando es lo único que
+    # queda. La pantalla la necesita para decir "vuelve en 0:38" en vez de
+    # "no queda nada", que es mentira y expulsa de la sentada.
     cooling = conn.execute(
-        "SELECT COUNT(*) AS n, MIN(last_reviewed_on) AS oldest FROM words "
-        "WHERE card_state IN ('LEARNING','RELEARNING') AND fsrs_due > ? "
-        "  AND fsrs_due <= ? AND last_reviewed_on > ?",
-        (now, wide_until, cool_since)).fetchone()
+        f"SELECT COUNT(*) AS n, MIN(last_reviewed_on) AS oldest {_WHERE_COOLING}",
+        wide_args).fetchone()
     resume_at = None
     if cooling["n"] and cooling["oldest"]:
         resume_at = (datetime.fromisoformat(cooling["oldest"])
@@ -348,12 +373,6 @@ def _buckets(conn: sqlite3.Connection, new_per_day: int,
         comeback_due = 0
     if limits is not None:
         due = min(due, max(0, limits.get("reviews", 0)))
-        # ADR-015: presupuesto agotado — tampoco la escalera. Las palabras a
-        # medias siguen vencidas y abren la siguiente sentada.
-        if limits.get("ladder") == 0:
-            learning = learning_wide = 0
-            cooling = {"n": 0, "oldest": None}
-            resume_at = None
 
     return {
         "due": due, "due_total": due_total,
@@ -398,14 +417,16 @@ def _pick(conn: sqlite3.Connection, b: dict, mix: str,
           position: int) -> "tuple":
     """Qué card toca ahora, según la estrategia de mezcla.
 
-    `learn-ahead` va SIEMPRE al final: mostrar antes de tiempo una palabra que
-    fallaste sólo tiene sentido cuando no queda nada más que hacer.
+    La escalera ya espaciada va PRIMERO (rev. 2026-11-21): la fallada vuelve
+    tras `AFTER_CARDS` tarjetas, no cuando el reloj y lo demás la dejen. El
+    resto de la escalera, al final: sólo cuando no queda nada más que hacer.
     """
     def fetch(sql, args):
         return conn.execute(f"SELECT * {sql} LIMIT 1", args).fetchone()
 
     due_args = (b["now"], b["local_now"])
-    learn_args = (b["now"], b["ahead_until"], b["cool_since"])
+    learn_args = (b["now"], b["wide_until"], AFTER_CARDS, b["cool_since"],
+                  b["ahead_until"])
 
     want_new = False
     if b["new_available"] and b["due"]:
@@ -420,6 +441,8 @@ def _pick(conn: sqlite3.Connection, b: dict, mix: str,
     elif b["new_available"]:
         want_new = True
 
+    if b["learning"]:
+        return fetch(_SQL_LEARNING, learn_args), True
     if want_new:
         return fetch(_SQL_NEW, ()), False
     if b["due"]:
@@ -430,14 +453,12 @@ def _pick(conn: sqlite3.Connection, b: dict, mix: str,
         # vencida, salen aquí sin esperar turno.
         return fetch(_SQL_DUE_LADDER if b["ladder_only"] else _SQL_DUE,
                      due_args), False
-    if b["learning"]:
-        return fetch(_SQL_LEARNING, learn_args), True
     # Nada más que hacer: se abre la ventana a la escalera entera antes de
     # rendirse. Decir "no queda nada" y que la palabra reaparezca diez minutos
     # después es lo peor de los dos mundos.
     if b["learning_wide"]:
-        return fetch(_SQL_LEARNING,
-                     (b["now"], b["wide_until"], b["cool_since"])), True
+        return fetch(_SQL_FALLBACK,
+                     (b["now"], b["wide_until"], AFTER_CARDS, b["cool_since"])), True
     return None, False
 
 

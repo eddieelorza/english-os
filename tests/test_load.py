@@ -217,9 +217,14 @@ class TestRepeatedFailures(unittest.TestCase):
                 break
             srs.answer(self.conn, nxt["id"], 1)        # falla todo, siempre
             answers += 1
-        self.assertLessEqual(answers, budget, "ADR-009 dejaba seguir la escalera")
+        # La escalera se termina aunque se pase del presupuesto (rev.
+        # 2026-11-21); lo que corta la noria es MAX_AGAIN_PER_DAY.
+        self.assertLess(answers, budget + 30, "la sentada no terminó")
 
-    def test_a_spent_budget_stops_even_the_ladder(self):
+    def test_a_spent_budget_still_finishes_the_ladder(self):
+        """Rev. 2026-11-21: cortar la escalera dejaba la fallada para otro
+        día, y ahí se acertaba el 9%. Con el presupuesto gastado sólo se
+        sirve lo que está a medio aprender — nada vencido, nada nuevo."""
         s = session.start(self.conn, mode="auto")
         for _ in range(3):
             nxt = srs.queue(self.conn, new_per_day=0,
@@ -234,11 +239,11 @@ class TestRepeatedFailures(unittest.TestCase):
         self.conn.execute("UPDATE study_sessions SET budget=3 WHERE id=?", (s["id"],))
         self.conn.commit()
         self.assertEqual(session.limits(self.conn),
-                         {"new": 0, "reviews": 0, "ladder": 0})
+                         {"new": 0, "reviews": 3, "ladder_only": True})
         q = srs.queue(self.conn, new_per_day=0, limits=session.limits(self.conn))
-        self.assertIsNone(q["next"])
-        # …pero no desaparecen: sin el tope de la sentada, ahí siguen
-        self.assertIsNotNone(srs.queue(self.conn, new_per_day=0)["next"])
+        state = self.conn.execute("SELECT card_state FROM words WHERE id=?",
+                                  (q["next"]["id"],)).fetchone()[0]
+        self.assertIn(state, ("LEARNING", "RELEARNING"), "sirvió algo fuera de la escalera")
 
     def test_fresh_material_stops_early_to_leave_room_for_the_repeats(self):
         session.start(self.conn, mode="auto")

@@ -147,16 +147,25 @@ def save_config(conn: sqlite3.Connection, patch: dict) -> dict:
     return config(conn)
 
 
-def longest_step_minutes(conn: "sqlite3.Connection | None" = None) -> float:
-    """El paso de aprendizaje más largo configurado, en minutos.
+# FSRS da a Hard 1.5× el paso cuando la escalera tiene un solo paso
+# (reaprendizaje: 10 min → Hard 15 min).
+HARD_STEP_FACTOR = 1.5
 
-    Marca hasta dónde puede adelantarse una card cuando ya no queda nada más
-    que estudiar: la escalera de aprendizaje entera, ni un minuto más. Sin
-    este tope, "no queda nada" acabaría trayendo trabajo de mañana.
+
+def ladder_reach_minutes(conn: "sqlite3.Connection | None" = None) -> float:
+    """Hasta dónde llega la escalera de aprendizaje, en minutos.
+
+    Marca hasta dónde puede adelantarse una card: la escalera entera, ni un
+    minuto más. Sin este tope, "no queda nada" acabaría trayendo trabajo de
+    mañana. Es el paso más largo por el factor de Hard: con el paso a secas,
+    Hard en reaprendizaje (15 min) caía fuera de una ventana de 10, la
+    palabra quedaba invisible y volvía días después (2026-11-21: 9% de
+    acierto en las falladas que se escapaban así de la sentada).
     """
     kw = scheduler_kwargs(conn)
     steps = list(kw["learning_steps"]) + list(kw["relearning_steps"])
-    return max((s.total_seconds() / 60 for s in steps), default=0.0)
+    return HARD_STEP_FACTOR * max((s.total_seconds() / 60 for s in steps),
+                                  default=0.0)
 
 
 def shortest_step_minutes(conn: "sqlite3.Connection | None" = None) -> float:

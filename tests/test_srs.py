@@ -254,6 +254,54 @@ class TestLearnAhead(unittest.TestCase):
         self.assertIsNotNone(q["next"], "se pasó de prudente y volvió a esperar")
         self.assertTrue(q["ahead"])
 
+    def test_a_failed_word_comes_back_after_a_few_cards_not_the_clock(self):
+        """Rev. 2026-11-21: con repasos pendientes, la fallada esperaba a su
+        paso de 10 min, la sentada terminaba antes y volvía días después
+        (9% de acierto). Ahora vuelve tras AFTER_CARDS tarjetas, por delante
+        de lo vencido."""
+        due = [seed_word(self.conn, f"due{i}") for i in range(6)]
+        for wid in due:
+            srs.answer(self.conn, wid, 4)
+        self.conn.execute("UPDATE words SET fsrs_due='2000-01-01T00:00:00+00:00' "
+                          f"WHERE id IN ({','.join(map(str, due))})")
+        failed = seed_word(self.conn, "endure")
+        srs.answer(self.conn, failed, 3)
+        srs.answer(self.conn, failed, 1)    # Again → paso de 1 min
+        served = []
+        for _ in range(srs.AFTER_CARDS + 1):
+            nxt = srs.queue(self.conn, new_per_day=0)["next"]
+            served.append(nxt["id"])
+            srs.answer(self.conn, nxt["id"], 3)
+        self.assertNotIn(failed, served[:srs.AFTER_CARDS], "volvió antes de tiempo")
+        self.assertEqual(served[srs.AFTER_CARDS], failed,
+                         "no volvió tras unas tarjetas, por delante de lo vencido")
+
+    def test_hard_in_relearning_is_still_in_the_ladder(self):
+        """Hard en reaprendizaje da 15 min; la ventana llegaba a 10 y la
+        palabra quedaba invisible: la sentada decía 'nada' y se iba."""
+        wid = seed_word(self.conn, "dust")
+        for _ in range(3):
+            srs.answer(self.conn, wid, 3)    # a REVIEW
+        self.conn.execute("UPDATE words SET fsrs_due='2000-01-01T00:00:00+00:00' "
+                          "WHERE id=?", (wid,))
+        srs.answer(self.conn, wid, 1)        # lapso → RELEARNING
+        srs.answer(self.conn, wid, 2)        # Hard → 15 min
+        age_last_review(self.conn, wid, 2)
+        q = srs.queue(self.conn, new_per_day=0)
+        self.assertEqual(q["learning"], 1, "Hard la sacó de la escalera")
+        self.assertEqual(q["next"]["id"], wid)
+
+    def test_two_failed_words_alternate_without_a_countdown(self):
+        """Sin nada más que hacer, dos falladas se turnan en vez de mostrar
+        un contador: sólo la última contestada espera."""
+        a, b = seed_word(self.conn, "alpha"), seed_word(self.conn, "beta")
+        for wid in (a, b):
+            srs.answer(self.conn, wid, 3)
+            srs.answer(self.conn, wid, 1)
+        q = srs.queue(self.conn, new_per_day=0)
+        self.assertEqual(q["next"]["id"], a, "debía servir la otra fallada")
+        self.assertEqual(q["cooling"], 1, "sólo espera la recién contestada")
+
     def test_pause_reports_nothing_learning(self):
         from app import pause
         wid = seed_word(self.conn, "endure")

@@ -501,7 +501,7 @@ def limits(conn: sqlite3.Connection) -> "dict | None":
     if brake(conn) is not None:
         # Ni vencidas ni nuevas. La escalera no se corta nunca: dejar a medias
         # una palabra que acabas de fallar es lo contrario del objetivo.
-        return {"new": 0, "reviews": 0}
+        return _ladder_only(conn, 0)
     return {"new": p["remaining_new"], "reviews": p["remaining_reviews"]}
 
 
@@ -510,34 +510,45 @@ def _budget_limits(conn: sqlite3.Connection, p: dict) -> dict:
 
     ADR-009 no cortaba nunca la escalera, y por eso una sentada "de 50" se
     iba a 80-100 respuestas: la cola eran repeticiones, con el fallo subiendo
-    de 28% a 57%. Aquí el presupuesto es un límite de verdad. Para no dejar
-    palabras a medias, antes de agotarlo se deja de servir material nuevo y
-    se reserva lo que cuesta terminar la escalera abierta.
+    de 28% a 57%. Aquí el presupuesto es un límite de verdad para lo nuevo y
+    lo vencido. Antes de agotarlo se deja de servir material nuevo y se
+    reserva lo que cuesta terminar la escalera abierta.
 
-    Lo que aun así quede a medias NO se esconde ni se reinicia: sigue vencido
-    con su estado FSRS real y es lo primero de la siguiente sentada.
+    La escalera, en cambio, se termina siempre — también con el presupuesto
+    gastado (ronda de cierre, rev. 2026-11-21). Cortarla dejaba la palabra
+    fallada para la siguiente sentada, días después, y ahí se acertaba el 9%
+    contra el 52-63% si volvía en la misma. La noria que temía ADR-015 la
+    acota `srs.MAX_AGAIN_PER_DAY`: al tercer Again la palabra descansa.
     """
     from app import load
     left = p["budget"] - p["done"]
     if left <= 0:
-        return {"new": 0, "reviews": 0, "ladder": 0}
-    ladder = conn.execute(
+        return _ladder_only(conn, 0)
+    reserve = _ladder_count(conn) * load.effort(conn)["ladder_cost"]
+    if brake(conn) is not None or left <= reserve:
+        return _ladder_only(conn, left)
+    return {"new": min(p["remaining_new"], left - reserve),
+            "reviews": left - reserve}
+
+
+def _ladder_only(conn: sqlite3.Connection, left: int) -> dict:
+    """Sólo la escalera — incluida la que YA venció. Una palabra fallada
+    hace una hora sale por la cola de vencidas, no por la de aprendizaje:
+    con `reviews: 0` a secas se bloqueaba justo lo que existe para proteger,
+    y la sentada se cerraba sin servir nada (pasó el 2026-09-20: 3 vencidas,
+    las 3 en escalera, 0 servidas)."""
+    return {"new": 0, "reviews": max(left, _ladder_count(conn)),
+            "ladder_only": True}
+
+
+def _ladder_count(conn: sqlite3.Connection) -> int:
+    return conn.execute(
         "SELECT COUNT(*) FROM words WHERE card_state IN ('LEARNING','RELEARNING') "
         "AND fsrs_due <= ?", ((datetime.now(timezone.utc)
                                + _ladder_window(conn)).isoformat(),)).fetchone()[0]
-    reserve = ladder * load.effort(conn)["ladder_cost"]
-    if brake(conn) is not None or left <= reserve:
-        # Sólo la escalera — incluida la que YA venció. Una palabra fallada
-        # hace una hora sale por la cola de vencidas, no por la de
-        # aprendizaje: con `reviews: 0` a secas la reserva bloqueaba justo lo
-        # que existe para proteger, y la sentada se cerraba sin servir nada
-        # (pasó el 2026-09-20: 3 vencidas, las 3 en escalera, 0 servidas).
-        return {"new": 0, "reviews": left, "ladder": left, "ladder_only": True}
-    return {"new": min(p["remaining_new"], left - reserve),
-            "reviews": left - reserve, "ladder": left}
 
 
 def _ladder_window(conn: sqlite3.Connection):
     from datetime import timedelta
     from app import deck
-    return timedelta(minutes=deck.longest_step_minutes(conn))
+    return timedelta(minutes=deck.ladder_reach_minutes(conn))
