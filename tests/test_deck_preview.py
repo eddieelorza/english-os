@@ -323,3 +323,35 @@ class TestEddiesWalkthrough(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNewSource(unittest.TestCase):
+    """ADR-018 D1: el mazo de cuentos ya no alimenta palabras nuevas."""
+
+    def setUp(self):
+        self.conn = db.connect(":memory:")
+        ids = {w: seed_word(self.conn, w) for w in ("quarrel", "merchant", "rollback")}
+        self.conn.execute("UPDATE words SET source='Anki' WHERE id IN (?,?)",
+                          (ids["quarrel"], ids["merchant"]))
+        self.conn.execute("UPDATE words SET seen_in_text='2026-11-20' WHERE id=?",
+                          (ids["merchant"],))
+        self.conn.execute("UPDATE words SET source='Reading' WHERE id=?",
+                          (ids["rollback"],))
+        self.conn.commit()
+        self.ids = ids
+
+    def new_ids(self):
+        return set(srs._buckets(self.conn, 10, None)["ids"]["new"])
+
+    def test_by_default_only_what_he_met_in_context_enters(self):
+        self.assertEqual(deck.config(self.conn)["new_source"], "encountered")
+        self.assertEqual(self.new_ids(),
+                         {self.ids["merchant"], self.ids["rollback"]})
+
+    def test_deck_restores_the_old_behaviour(self):
+        deck.save_config(self.conn, {"new_source": "deck"})
+        self.assertEqual(self.new_ids(), set(self.ids.values()))
+
+    def test_an_unknown_source_is_rejected(self):
+        with self.assertRaises(ValueError):
+            deck.save_config(self.conn, {"new_source": "everything"})

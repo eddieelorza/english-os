@@ -34,9 +34,14 @@ DEFAULTS = {
     "deck_enable_fuzzing": "0",
     # Cómo se intercalan los tres grupos de la cola (M17c).
     "deck_queue_mix": "due_first",
+    # De dónde salen las palabras nuevas (ADR-018 D1). `encountered`: sólo las
+    # que ya vio en una lectura terminada o que no vienen del mazo. `deck`:
+    # cualquiera del mazo, como antes.
+    "deck_new_source": "encountered",
 }
 
 QUEUE_MIXES = ("due_first", "new_first", "mixed")
+NEW_SOURCES = ("encountered", "deck")
 
 _UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 _STEP_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smhd])\s*$", re.I)
@@ -100,6 +105,7 @@ def config(conn: sqlite3.Connection) -> dict:
         "desired_retention": float(merged["deck_desired_retention"]),
         "enable_fuzzing": merged["deck_enable_fuzzing"] == "1",
         "queue_mix": merged["deck_queue_mix"],
+        "new_source": merged["deck_new_source"],
         # Sólo lectura: se cambia en .env (ver el docstring del módulo).
         "rollover_hour": db.rollover_hour(),
         "rollover_hour_editable": False,
@@ -110,7 +116,8 @@ _FIELDS = {"learning_steps": "deck_learning_steps",
            "relearning_steps": "deck_relearning_steps",
            "desired_retention": "deck_desired_retention",
            "enable_fuzzing": "deck_enable_fuzzing",
-           "queue_mix": "deck_queue_mix"}
+           "queue_mix": "deck_queue_mix",
+           "new_source": "deck_new_source"}
 
 
 def save_config(conn: sqlite3.Connection, patch: dict) -> dict:
@@ -136,6 +143,10 @@ def save_config(conn: sqlite3.Connection, patch: dict) -> dict:
         elif field == "queue_mix":
             if value not in QUEUE_MIXES:
                 raise ValueError(f"queue_mix debe ser uno de {QUEUE_MIXES}")
+            updates[key] = value
+        elif field == "new_source":
+            if value not in NEW_SOURCES:
+                raise ValueError(f"new_source debe ser uno de {NEW_SOURCES}")
             updates[key] = value
 
     for key, value in updates.items():

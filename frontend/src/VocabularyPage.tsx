@@ -4,6 +4,7 @@ import { Search } from 'lucide-react'
 import { api } from './api'
 import type { Summary, Word, WordPage, WordStatus, StudiedToday as StudiedTodayT } from './api'
 import WordEntry from './WordEntry'
+import GlossReview from './GlossReview'
 import { Page, PageHeader, RuledSkeleton, ErrorLine, Empty, Button, SLIDE, fmt } from './ui'
 
 const TABS: { label: string; value: WordStatus | '' }[] = [
@@ -89,6 +90,7 @@ export default function VocabularyPage() {
       />
 
       <StudiedToday />
+      <GlossReview />
 
       {/* Apparatus: ruled search line + status tabs */}
       <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">

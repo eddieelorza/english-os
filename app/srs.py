@@ -294,7 +294,18 @@ _SQL_FALLBACK = f"{_WHERE_FALLBACK} ORDER BY last_reviewed_on, fsrs_due"
 # Primero las que ya encontró leyendo (ADR-014 Fase 3): una palabra vista en
 # una historia entra con contexto; una suelta del mazo de Anki, a 5 s la card,
 # es la que luego acierta el 45% en los pasos de aprendizaje.
-_SQL_NEW = f"{_WHERE_NEW} ORDER BY (seen_in_text IS NULL), anki_note_id, id"
+_ORDER_NEW = "ORDER BY (seen_in_text IS NULL), anki_note_id, id"
+# ADR-018 D1: el mazo de cuentos ya no alimenta nuevas. Sólo entra lo que
+# encontró en contexto o lo que no vino del mazo. `IS NOT` y no `!=`: una
+# palabra sin `source` también cuenta como ajena al mazo.
+_ENCOUNTERED = "AND (seen_in_text IS NOT NULL OR source IS NOT 'Anki')"
+
+
+def _sql_new(conn: sqlite3.Connection) -> str:
+    """El único sitio que decide qué palabra puede entrar como nueva."""
+    from app import deck  # local: deck importa db, no srs
+    encountered = deck.config(conn)["new_source"] == "encountered"
+    return f"{_WHERE_NEW} {_ENCOUNTERED if encountered else ''} {_ORDER_NEW}"
 
 # Agains a la misma palabra en un día antes de dejarla descansar. Hubo cards
 # con 9 repeticiones en una sentada: a partir de la tercera ya no es repaso,
@@ -362,7 +373,7 @@ def _buckets(conn: sqlite3.Connection, new_per_day: int,
     if limits is not None:
         new_budget = min(new_budget, max(0, limits.get("new", 0)))
     new_ids = [r[0] for r in conn.execute(
-        f"SELECT id {_SQL_NEW} LIMIT ?", (new_budget,))] if new_budget else []
+        f"SELECT id {_sql_new(conn)} LIMIT ?", (new_budget,))] if new_budget else []
 
     # El tope de la sentada esconde repasos de HOY; no finge que dejaron de
     # estar vencidos. `due_total` guarda el número honesto.
@@ -444,7 +455,7 @@ def _pick(conn: sqlite3.Connection, b: dict, mix: str,
     if b["learning"]:
         return fetch(_SQL_LEARNING, learn_args), True
     if want_new:
-        return fetch(_SQL_NEW, ()), False
+        return fetch(_sql_new(conn), ()), False
     if b["due"]:
         if (b["comeback_due"] and position >= COMEBACK_AFTER
                 and position % COMEBACK_EVERY == 0):

@@ -43,6 +43,27 @@ export interface WordPage {
   items: Word[]
 }
 
+export interface GlossProposal {
+  id: number
+  word_id: number
+  word: string
+  current_gloss: string | null
+  example_en: string | null
+  example_es: string | null
+  flags: string[]
+  pos: string | null
+  gloss_es: string
+  definition_en: string | null
+  note_es: string | null
+  imageable: boolean | number | null
+  second: { gloss_es: string; example_en: string; example_es: string } | null
+}
+
+export interface GlossQueue {
+  candidates: number
+  proposed: GlossProposal[]
+}
+
 export interface Summary {
   words: Record<WordStatus, number>
   words_total: number
@@ -707,6 +728,7 @@ export type JobKind =
   | 'tip'
   | 'writing_task'
   | 'shadow'
+  | 'vocab_audit'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
 
 export interface Job {
@@ -732,6 +754,25 @@ export interface Material {
 
 export const api = {
   summary: () => request<Summary>('/api/summary'),
+
+  glossQueue: () => request<GlossQueue>('/api/vocab/audit'),
+
+  proposeGlosses: (opts: { limit?: number } = {}) =>
+    request<Job>('/api/vocab/audit/propose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    }),
+
+  decideGloss: (
+    id: number,
+    decision: { action: 'accept' | 'reject' | 'revert'; gloss_es?: string; definition_en?: string },
+  ) =>
+    request<unknown>(`/api/vocab/audit/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(decision),
+    }),
 
   enqueue: (kind: JobKind, params?: Record<string, unknown>) =>
     request<Job>('/api/jobs', {

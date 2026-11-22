@@ -36,7 +36,7 @@ _wake = threading.Event()
 _lock = threading.Lock()
 
 KINDS = ("reading", "podcast", "activities", "tip", "writing_task",
-         "shadow")
+         "shadow", "vocab_audit")
 
 
 # ── Handlers ─────────────────────────────────────────────────────────────
@@ -99,7 +99,13 @@ def _run_writing_task(conn: sqlite3.Connection, params: dict) -> dict:
     return {"steps": len(task.get("steps", [])), "from": task.get("from_name")}
 
 
+def _run_vocab_audit(conn: sqlite3.Connection, params: dict) -> dict:
+    from app import vocab_audit
+    return vocab_audit.propose(conn, limit=params.get("limit", 20))
+
+
 HANDLERS = {"reading": _run_reading, "podcast": _run_podcast,
+            "vocab_audit": _run_vocab_audit,
             "shadow": _run_shadow,
             "activities": _run_activities, "tip": _run_tip,
             "writing_task": _run_writing_task}

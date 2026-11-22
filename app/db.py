@@ -58,6 +58,26 @@ CREATE TABLE IF NOT EXISTS words (
 CREATE INDEX IF NOT EXISTS idx_words_normalized ON words(normalized);
 CREATE INDEX IF NOT EXISTS idx_words_status     ON words(status);
 
+CREATE TABLE IF NOT EXISTS senses (
+    id              INTEGER PRIMARY KEY,
+    word_id         INTEGER NOT NULL REFERENCES words(id),
+    position        INTEGER NOT NULL DEFAULT 1,
+    pos             TEXT,
+    gloss_es        TEXT NOT NULL,
+    definition_en   TEXT,
+    example_en      TEXT,
+    example_es      TEXT,
+    note_es         TEXT,
+    imageable       INTEGER,
+    flags           TEXT,
+    status          TEXT NOT NULL DEFAULT 'proposed',
+    old_meaning_es  TEXT,
+    old_meaning_en  TEXT,
+    created_at      TEXT NOT NULL,
+    decided_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_senses_status_word ON senses(status, word_id);
+
 CREATE TABLE IF NOT EXISTS review_history (
     id               INTEGER PRIMARY KEY,
     word_id          INTEGER NOT NULL REFERENCES words(id),

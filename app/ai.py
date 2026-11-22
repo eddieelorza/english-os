@@ -262,7 +262,7 @@ BASE = Path(__file__).resolve().parent.parent
 # What the text IS decides where it may go. Unknown tasks are personal: the
 # safe default is "stays on the Mac".
 GENERATE_TASKS = {"reading", "podcast", "activities", "tip", "writing_task",
-                  "writing_prompt", "speaking_prompt"}
+                  "writing_prompt", "speaking_prompt", "vocab_audit"}
 # Trabajo en lote: un bucle sobre miles de palabras con hasta 3 intentos cada
 # una se comería la cuota gratuita y luego el dinero en una tarde. Sólo local.
 LOCAL_ONLY_TASKS = {"glossary"}

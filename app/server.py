@@ -16,19 +16,19 @@ import re
 import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
-from typing import Iterator, Optional
+from typing import Iterator, Literal, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app import (activities, ai, backlog, coach, conversation, db, deck, gate,
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
-                 srs, tts, writing)
+                 srs, tts, vocab_audit, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -264,6 +264,47 @@ def create_word(w: NewWord) -> dict:
         conn.commit()
         row = conn.execute(f"SELECT {WORD_COLS} FROM words WHERE id=?", (wid,)).fetchone()
         return dict(row)
+
+
+# ── Auditoría de glosas (ADR-018 D2) ─────────────────────────────────────
+
+class AuditPropose(BaseModel):
+    limit: int = Field(default=20, ge=1, le=50)
+
+
+class AuditDecision(BaseModel):
+    action: Literal["accept", "reject", "revert"]
+    gloss_es: Optional[str] = None
+    definition_en: Optional[str] = None
+
+
+@app.get("/api/vocab/audit")
+def vocab_audit_queue() -> dict:
+    with get_db() as conn:
+        return vocab_audit.queue(conn)
+
+
+@app.post("/api/vocab/audit/propose", status_code=202)
+def propose_vocab_audit(body: AuditPropose) -> dict:
+    with get_db() as conn:
+        try:
+            job = jobs.enqueue(conn, "vocab_audit", {"limit": body.limit})
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+    jobs.ensure_worker()
+    return job
+
+
+@app.post("/api/vocab/audit/{sense_id}")
+def decide_vocab_audit(sense_id: int, body: AuditDecision) -> dict:
+    with get_db() as conn:
+        try:
+            return vocab_audit.decide(conn, sense_id, body.action,
+                                      body.gloss_es, body.definition_en)
+        except vocab_audit.SenseNotFound as exc:
+            raise HTTPException(404, str(exc))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
 
 
 # ── Jobs (M14) ───────────────────────────────────────────────────────────
