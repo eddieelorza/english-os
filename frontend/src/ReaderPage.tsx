@@ -6,6 +6,7 @@ import { api, STOPWORDS } from './api'
 import { PlayButton } from './Audio'
 import ReadingPlayer from './ReadingPlayer'
 import ComprehensionQuiz from './ComprehensionQuiz'
+import SessionNext from './SessionNext'
 import type { LexiconEntry, SentenceExplanation, TextDetail, WordStatus } from './api'
 import {
   Page,
@@ -301,6 +302,7 @@ export default function ReaderPage() {
           <Colophon k="Still unknown" v={fmt(stats.unknown)} />
           <Colophon k="Added to vocabulary" v={added.length ? added.join(', ') : 'none'} />
         </dl>
+        <SessionNext after="reading" />
         <div className="mt-10 flex gap-6">
           <ButtonLink to="/reading" variant="text" tone="cobalt">
             ← Back to the shelf

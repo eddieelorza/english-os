@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import (activities, ai, backlog, coach, conversation, db, deck, gate,
+from app import (activities, ai, backlog, coach, conversation, day, db, deck, gate,
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
@@ -600,6 +600,13 @@ def patch_settings(patch: dict) -> dict:
             return session.save_settings(conn, patch)
         except (ValueError, TypeError) as exc:
             raise HTTPException(422, str(exc))
+
+
+@app.get("/api/day")
+def day_plan() -> dict:
+    """La sesión de un botón: bloques del día y el siguiente por hacer."""
+    with get_db() as conn:
+        return day.plan(conn)
 
 
 @app.get("/api/today")

@@ -527,6 +527,22 @@ export interface ResumeResult {
   anki?: { reachable: boolean; cards: number }
 }
 
+export type DayBlockKey = 'review' | 'recall' | 'reading'
+
+export interface DayBlock {
+  key: DayBlockKey
+  title: string
+  route: string
+  done: boolean
+  detail: string
+}
+
+export interface DayPlan {
+  paused: boolean
+  blocks: DayBlock[]
+  next: DayBlock | null
+}
+
 export interface Today {
   date: string
   pause: PauseState
@@ -960,6 +976,8 @@ export const api = {
     }),
 
   today: () => request<Today>('/api/today'),
+
+  day: () => request<DayPlan>('/api/day'),
 
   model: () => request<ModelSnapshot>('/api/model'),
 

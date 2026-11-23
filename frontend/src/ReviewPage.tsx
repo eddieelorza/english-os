@@ -18,6 +18,7 @@ import type {
 } from './api'
 import { PlayButton } from './Audio'
 import RecallSession from './RecallSession'
+import SessionNext from './SessionNext'
 import {
   Button,
   ButtonLink,
@@ -799,6 +800,7 @@ function Finished({
         </p>
       )}
       <RecallSession />
+      <SessionNext after="review" hideFor={['recall']} />
     </motion.div>
   )
 }

@@ -5,6 +5,7 @@ import VocabularyPage from './VocabularyPage'
 import ReadingPage from './ReadingPage'
 import ReaderPage from './ReaderPage'
 import ReviewPage from './ReviewPage'
+import { RecallPage } from './RecallSession'
 import SpeakingPage from './SpeakingPage'
 import ShadowingPage from './ShadowingPage'
 import StatsPage from './StatsPage'
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/reading" element={<ReadingPage />} />
           <Route path="/reading/:id" element={<ReaderPage />} />
           <Route path="/review" element={<ReviewPage />} />
+          <Route path="/recall" element={<RecallPage />} />
           <Route path="/podcast" element={<PodcastPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/writing" element={<WritingPage />} />

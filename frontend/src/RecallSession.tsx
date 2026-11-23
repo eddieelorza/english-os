@@ -2,12 +2,24 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { api } from './api'
 import type { RecallNext, RecallResult } from './api'
 import { mediaUrl, PlayButton } from './Audio'
-import { Section, Button, ErrorLine, Waiting, Empty, describeError, fmt } from './ui'
+import SessionNext from './SessionNext'
+import { Page, PageHeader, Section, Button, ErrorLine, Waiting, Empty, describeError, fmt } from './ui'
+
+/* Its own page, so "Continue — Recall" on Today never lands on a Review card
+   still in its learning steps. Here the sitting starts at once. */
+export function RecallPage() {
+  return (
+    <Page>
+      <PageHeader title="Recall" subtitle="See the meaning or the gap, type the English word." />
+      <RecallSession autoStart />
+    </Page>
+  )
+}
 
 /* Availability and the sitting live together so Review only needs mount points. */
-export default function RecallSession() {
+export default function RecallSession({ autoStart = false }: { autoStart?: boolean }) {
   const [next, setNext] = useState<RecallNext | null>(null)
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(autoStart)
   const [answered, setAnswered] = useState(0)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<RecallResult | null>(null)
@@ -216,6 +228,7 @@ export default function RecallSession() {
         {started && next && !item && !loading && !loadError && (
           <div ref={ending} tabIndex={-1} role="status">
             <Empty hint={`${fmt(answered)} ${answered === 1 ? 'word' : 'words'} answered this sitting.`}>Nothing left to recall today.</Empty>
+            <SessionNext after="recall" />
           </div>
         )}
       </div>
