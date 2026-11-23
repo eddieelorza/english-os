@@ -195,6 +195,15 @@ function ReadingAudio({
                 Now I read
               </Button>
             )}
+            {voice === 'own' && (
+              <a
+            href={mediaUrl(src)}
+            download={`my-voice-reading-${textId}.wav`}
+            className="text-cobalt-deep hover:text-cobalt text-xs font-semibold tracking-label uppercase"
+          >
+            Download
+          </a>
+            )}
           </>
         )}
         <div className="flex items-baseline gap-2">

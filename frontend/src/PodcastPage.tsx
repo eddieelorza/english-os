@@ -433,6 +433,16 @@ function Player({
           Repeat turn
         </button>
 
+        {voice === 'own' && ownAudio && (
+          <a
+            href={mediaUrl(ownAudio.path)}
+            download={`my-voice-podcast-${episode.id}.wav`}
+            className="text-cobalt-deep hover:text-cobalt text-xs font-semibold tracking-label uppercase"
+          >
+            Download
+          </a>
+        )}
+
         <div className="flex items-baseline gap-2">
           <span className="text-ghost text-xs font-semibold tracking-label uppercase">
             Speed

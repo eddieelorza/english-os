@@ -23,6 +23,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -106,10 +107,8 @@ def test_own_voice() -> dict:
         return {"ok": False, "error": "Could not reach ElevenLabs or read the voice details."}
 
 
-def _eleven(text: str) -> tuple[np.ndarray, dict]:
-    """One paid request, returning mono float PCM and character alignment."""
-    import numpy as np
-
+def _eleven_request(text: str) -> tuple[bytes, dict]:
+    """One paid request, returning raw int16 PCM and character alignment."""
     if not own_voice_configured():
         raise TTSUnavailable("La voz propia de ElevenLabs no está configurada.")
     voice_id = urllib.parse.quote(os.environ["ELEVENLABS_VOICE_ID"], safe="")
@@ -122,12 +121,11 @@ def _eleven(text: str) -> tuple[np.ndarray, dict]:
     try:
         with urllib.request.urlopen(request, timeout=300) as response:
             result = json.load(response)
-        audio = np.frombuffer(base64.b64decode(result["audio_base64"], validate=True),
-                              dtype="<i2").astype(np.float32) / 32768.0
+        pcm = base64.b64decode(result["audio_base64"], validate=True)
         alignment = result["alignment"]
-        if not len(audio) or not isinstance(alignment, dict):
+        if not pcm or len(pcm) % 2 or not isinstance(alignment, dict):
             raise ValueError("empty audio or alignment")
-        return audio, alignment
+        return pcm, alignment
     except urllib.error.HTTPError as exc:
         # Never surface the upstream body, URL, headers or exception: any of
         # them could echo credentials. Inspect only the quota status marker.
@@ -146,6 +144,42 @@ def _eleven(text: str) -> tuple[np.ndarray, dict]:
         raise TTSUnavailable(message) from None
     except Exception:
         raise TTSUnavailable("ElevenLabs no respondió o devolvió audio inválido") from None
+
+
+_PAID_LOCKS: "dict[str, threading.Lock]" = {}
+_PAID_LOCKS_GUARD = threading.Lock()
+
+
+def _write_atomic(path: Path, data: bytes) -> None:
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+
+
+def _eleven(text: str) -> "tuple[np.ndarray, dict]":
+    """Every paid response is kept on disk the moment it arrives.
+
+    Credits are spent once per (voice, model, text): a double click, a second
+    tab, a crash before the final file is written or a failure further down
+    the pipeline all come back here and find the audio already paid for.
+    """
+    import numpy as np
+
+    voice = f"{os.environ.get('ELEVENLABS_VOICE_ID', '')}|eleven_multilingual_v2"
+    key = _key(text, voice, "eleven-paid")
+    pcm_path = TTS_DIR / f"{key}.pcm"
+    align_path = TTS_DIR / f"{key}.align.json"
+    with _PAID_LOCKS_GUARD:
+        lock = _PAID_LOCKS.setdefault(key, threading.Lock())
+    with lock:
+        if not (pcm_path.is_file() and align_path.is_file()):
+            pcm, alignment = _eleven_request(text)
+            TTS_DIR.mkdir(parents=True, exist_ok=True)
+            _write_atomic(pcm_path, pcm)
+            _write_atomic(align_path, json.dumps(alignment).encode())
+        pcm = pcm_path.read_bytes()
+        alignment = json.loads(align_path.read_text(encoding="utf-8"))
+    return np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0, alignment
 
 
 def _own_key(kind: str, body: str, turns: list[dict]) -> str:
@@ -198,21 +232,6 @@ def narrate_own(text: str) -> dict:
     marks_path.write_text(json.dumps(marks, ensure_ascii=False), encoding="utf-8")
     return {"path": f"tts/{audio_path.name}", "marks": marks,
             "provider": "eleven", "cached": False}
-
-
-def _eleven_turn(text: str) -> "np.ndarray":
-    """A paid podcast turn, kept on disk: a retry after a failure mid-episode
-    does not pay again for the turns that already came back."""
-    import numpy as np
-
-    voice = f"{os.environ.get('ELEVENLABS_VOICE_ID', '')}|eleven_multilingual_v2"
-    path = TTS_DIR / f"{_key(text, voice, 'eleven-turn')}.npy"
-    if path.is_file():
-        return np.load(path)
-    audio, _ = _eleven(text)
-    TTS_DIR.mkdir(parents=True, exist_ok=True)
-    np.save(path, audio)
-    return audio
 
 
 def narrate_turns_own(turns: list[dict]) -> dict:
@@ -388,7 +407,7 @@ def narrate_turns(turns: "list[dict]", own_speaker: str | None = None) -> dict:
             voice_id = VOICES.get(f"speaker_{turn['speaker'].lower()}",
                                   VOICES["narrator"])
             if turn["speaker"] == own_speaker:
-                audio = _eleven_turn(turn["text"])
+                audio, _ = _eleven(turn["text"])
             else:
                 audio = np.concatenate([a for _, _, a in
                                         pipe(turn["text"], voice=voice_id)])

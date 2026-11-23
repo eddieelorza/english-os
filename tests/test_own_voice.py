@@ -160,19 +160,46 @@ class OwnVoiceTests(unittest.TestCase):
 
     def test_podcast_retry_does_not_pay_twice_for_finished_turns(self):
         turns = [{"speaker": "B", "text": "One."}, {"speaker": "B", "text": "Two."}]
-        audio = np.zeros(10, dtype=np.float32)
+        pcm = (np.zeros(10, dtype="<i2").tobytes(), {})
         pipe = mock.Mock(return_value=[])
-        with mock.patch.object(tts.KokoroProvider, "available", return_value=True), \
-             mock.patch.object(tts.KokoroProvider, "_pipe", return_value=pipe), \
-             mock.patch.object(tts, "_eleven",
-                               side_effect=[(audio, {}), tts.TTSUnavailable("out")]):
+        kokoro = [mock.patch.object(tts.KokoroProvider, "available", return_value=True),
+                  mock.patch.object(tts.KokoroProvider, "_pipe", return_value=pipe)]
+        for p in kokoro:
+            p.start()
+            self.addCleanup(p.stop)
+        with mock.patch.object(tts, "_eleven_request",
+                               side_effect=[pcm, tts.TTSUnavailable("out")]):
             with self.assertRaises(tts.TTSUnavailable):
                 tts.narrate_turns_own(turns)
-        with mock.patch.object(tts.KokoroProvider, "available", return_value=True), \
-             mock.patch.object(tts.KokoroProvider, "_pipe", return_value=pipe), \
-             mock.patch.object(tts, "_eleven", return_value=(audio, {})) as eleven:
+        with mock.patch.object(tts, "_eleven_request", return_value=pcm) as paid:
             tts.narrate_turns_own(turns)
-        self.assertEqual(eleven.call_args_list, [mock.call("Two.")])
+        self.assertEqual(paid.call_args_list, [mock.call("Two.")])
+
+    def test_a_failure_after_payment_does_not_pay_again(self):
+        text = "Hello world."
+        pcm = np.zeros(10, dtype="<i2").tobytes()
+        with mock.patch.object(tts, "_eleven_request", return_value=(pcm, {})) as paid:
+            with self.assertRaises(tts.TTSUnavailable):   # alignment unusable
+                tts.narrate_own(text)
+            with self.assertRaises(tts.TTSUnavailable):
+                tts.narrate_own(text)
+        paid.assert_called_once()
+
+    def test_concurrent_requests_pay_once(self):
+        import threading
+        import time
+        pcm = np.zeros(10, dtype="<i2").tobytes()
+
+        def slow(_text):
+            time.sleep(0.2)
+            return pcm, {}
+        with mock.patch.object(tts, "_eleven_request", side_effect=slow) as paid:
+            threads = [threading.Thread(target=tts._eleven, args=("Same.",)) for _ in range(3)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        paid.assert_called_once()
 
     def test_podcast_requires_kokoro(self):
         with mock.patch.object(tts.KokoroProvider, "available", return_value=False):
