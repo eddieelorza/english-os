@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app import day, db, pause, recall, session, srs  # noqa: E402
+from app import day, db, pause, recall, session, srs, writing  # noqa: E402
 
 QUEUE = {"due": 0, "new_available": 0, "learning_now": 0, "reviewed_today": 0}
 NOTHING = {"item": None, "due": 0, "new_left": 5}
@@ -70,8 +70,21 @@ class TestPlan(DayCase):
             (wid, db.now_iso()))
         self.conn.commit()
         p = self.plan()
-        self.assertEqual(self.keys(p), [("recall", True)])
+        # La palabra recién recordada pasa a la micro-producción.
+        self.assertEqual(self.keys(p), [("recall", True), ("write", False)])
         self.assertEqual(p["blocks"][0]["detail"], "1 recalled today")
+        self.assertEqual(p["next"]["key"], "write")
+        self.assertEqual(writing.micro(self.conn)["steps"][0]["word"], "x")
+
+        db.upsert_text(self.conn, {"kind": "writing", "title": "Micro: x…",
+                                   "date": db.study_day(), "body": "I x."})
+        self.conn.commit()
+        p = self.plan()
+        self.assertEqual(self.keys(p), [("recall", True), ("write", True)])
+        self.assertIsNone(p["next"])
+
+    def test_micro_needs_words(self):
+        self.assertEqual(writing.micro(self.conn)["steps"], [])
 
     def test_a_reading_finished_today_closes_the_block(self):
         self.reading("old", "2026-08-01T10:00:00")

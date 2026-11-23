@@ -38,17 +38,17 @@ function isFeedback(value: unknown): value is Feedback {
     typeof s.note === 'string' && (s.category === undefined || typeof s.category === 'string')
 }
 
-function clearDraft() {
+function clearDraft(draftKey: string) {
   try {
-    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(draftKey)
   } catch {
     /* Storage is optional; the current page still works. */
   }
 }
 
-function readDraft(task: WritingTask): GuidedDraft | null {
+function readDraft(task: WritingTask, draftKey: string): GuidedDraft | null {
   try {
-    const saved: unknown = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
+    const saved: unknown = JSON.parse(localStorage.getItem(draftKey) ?? 'null')
     if (saved !== null && typeof saved === 'object') {
       const d = saved as Partial<GuidedDraft>
       if (d.task === taskIdentity(task) && typeof d.text === 'string' &&
@@ -63,7 +63,7 @@ function readDraft(task: WritingTask): GuidedDraft | null {
   } catch {
     /* Ignore unavailable storage and malformed drafts. */
   }
-  clearDraft()
+  clearDraft(draftKey)
   return null
 }
 
@@ -80,8 +80,14 @@ function forServer(list: Feedback[]): WrittenSentence[] {
 
 export default function GuidedWriting({
   onDone,
+  load = api.writingSteps,
+  draftKey = DRAFT_KEY,
+  loadingLabel = "The coach is writing today's message…",
 }: {
   onDone: (r: GuidedResult) => void
+  load?: () => Promise<WritingTask>
+  draftKey?: string
+  loadingLabel?: string
 }) {
   const [task, setTask] = useState<WritingTask | null>(null)
   /* Three failures, three different sentences. They used to be one boolean
@@ -109,11 +115,10 @@ export default function GuidedWriting({
     setSetupError(null)
     setTask(null)
     setLoadingSince(Date.now())
-    api
-      .writingSteps()
+    load()
       .then((t) => {
         if (id !== loadId.current) return
-        const draft = readDraft(t)
+        const draft = readDraft(t, draftKey)
         setDone(draft?.done ?? [])
         setI(draft?.i ?? 0)
         setText(draft?.text ?? (t.steps[0]?.starter ? `${t.steps[0].starter} ` : ''))
@@ -127,7 +132,7 @@ export default function GuidedWriting({
         setLoadingSince(null)
         setSetupError(e instanceof Error ? e.message : String(e))
       })
-  }, [])
+  }, [load, draftKey])
 
   useEffect(() => {
     loadTask()
@@ -147,15 +152,15 @@ export default function GuidedWriting({
     if (!task) return
     const starter = task.steps[0]?.starter ? `${task.steps[0].starter} ` : ''
     if (done.length === 0 && feedback === null && i === 0 && text === starter) {
-      clearDraft()
+      clearDraft(draftKey)
       return
     }
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ task: taskIdentity(task), i, text, done, feedback }))
+      localStorage.setItem(draftKey, JSON.stringify({ task: taskIdentity(task), i, text, done, feedback }))
     } catch {
       /* Keep writing even when storage is unavailable or full. */
     }
-  }, [task, i, text, done, feedback])
+  }, [task, i, text, done, feedback, draftKey])
 
   useEffect(() => {
     box.current?.focus()
@@ -163,7 +168,7 @@ export default function GuidedWriting({
 
   function startOver() {
     if (!task || checking || finishing) return
-    clearDraft()
+    clearDraft(draftKey)
     setDone([])
     setI(0)
     setText(task.steps[0]?.starter ? `${task.steps[0].starter} ` : '')
@@ -224,7 +229,7 @@ export default function GuidedWriting({
     setFinishSince(Date.now())
     try {
       const result = await api.writingFinish(forServer(all), task.scenario, seconds)
-      clearDraft()
+      clearDraft(draftKey)
       onDone(result)
     } catch (e: unknown) {
       setFinishError(e instanceof Error ? e.message : String(e))
@@ -267,7 +272,7 @@ export default function GuidedWriting({
   if (!task)
     return (
       <>
-        <Waiting since={loadingSince}>The coach is writing today's message…</Waiting>
+        <Waiting since={loadingSince}>{loadingLabel}</Waiting>
         <RuledSkeleton lines={3} />
       </>
     )
@@ -275,17 +280,19 @@ export default function GuidedWriting({
   return (
     <section className="mt-8">
       {/* The message he is replying to — the reason to write at all */}
-      <div className="border-cobalt/30 bg-cobalt-wash/40 border-l-2 py-4 pl-4">
-        <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
-          From {task.from_name}
-        </p>
-        <p className="font-book mt-2 max-w-[62ch] text-base leading-relaxed">
-          {task.message}
-        </p>
-        <p lang="es" className="font-book text-ghost mt-2 text-sm italic">
-          {task.scenario}
-        </p>
-      </div>
+      {(task.from_name || task.message) && (
+        <div className="border-cobalt/30 bg-cobalt-wash/40 border-l-2 py-4 pl-4">
+          <p className="text-cobalt-deep text-xs font-semibold tracking-label uppercase">
+            From {task.from_name}
+          </p>
+          <p className="font-book mt-2 max-w-[62ch] text-base leading-relaxed">
+            {task.message}
+          </p>
+          <p lang="es" className="font-book text-ghost mt-2 text-sm italic">
+            {task.scenario}
+          </p>
+        </div>
+      )}
 
       {/* One segment per sentence, filled as you go. Three states now: right,
           fixed, and — when the coach was unreachable — written but unchecked. */}

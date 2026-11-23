@@ -446,12 +446,12 @@ function Stat({ k, v }: { k: string; v: string }) {
 
 /* The close of a guided session. Same result-card grammar as Practice and the
    sitting: the number in oversized figures, then what to carry forward. */
-function GuidedSummary({
+export function GuidedSummary({
   result,
   onAgain,
 }: {
   result: GuidedResult
-  onAgain: () => void
+  onAgain?: () => void
 }) {
   const minutes = Math.max(1, Math.round(result.seconds / 60))
   const unchecked = result.unchecked ?? 0
@@ -493,9 +493,11 @@ function GuidedSummary({
           {result.practice_next}
         </p>
 
-        <Button variant="secondary" onClick={onAgain} className="mt-7">
-          Another one
-        </Button>
+        {onAgain && (
+          <Button variant="secondary" onClick={onAgain} className="mt-7">
+            Another one
+          </Button>
+        )}
       </Section>
     </motion.div>
   )

@@ -61,6 +61,16 @@ class TestSpanishGuard(unittest.TestCase):
         self.assertEqual(r["fixed"], "I think it's very interesting")
         self.assertNotIn("discarded", r)
 
+    def test_almost_with_the_same_sentence_is_ok(self):
+        conn = db.connect(":memory:")
+        same = {"ok": False, "fixed": "My boss is stubborn about deadlines.",
+                "note": "", "category": "WORD"}
+        with mock.patch.object(writing.ai, "get_provider") as gp:
+            gp.return_value.generate_json.return_value = same
+            r = writing.check(conn, "My boss is stubborn about deadlines.")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["category"], "")
+
     def test_too_short_is_rejected(self):
         conn = db.connect(":memory:")
         with self.assertRaises(ValueError):

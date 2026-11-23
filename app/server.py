@@ -811,6 +811,12 @@ def writing_steps() -> dict:
             raise HTTPException(503, str(exc))
 
 
+@app.get("/api/writing/micro")
+def writing_micro() -> dict:
+    with get_db() as conn:
+        return writing.micro(conn)
+
+
 @app.post("/api/writing/check")
 def writing_check(body: SentenceCheck) -> dict:
     with get_db() as conn:

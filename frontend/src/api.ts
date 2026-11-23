@@ -527,7 +527,7 @@ export interface ResumeResult {
   anki?: { reachable: boolean; cards: number }
 }
 
-export type DayBlockKey = 'review' | 'recall' | 'reading'
+export type DayBlockKey = 'review' | 'recall' | 'write' | 'reading'
 
 export interface DayBlock {
   key: DayBlockKey
@@ -1048,6 +1048,8 @@ export const api = {
     ),
 
   writingSteps: () => request<WritingTask>('/api/writing/steps'),
+
+  writingMicro: () => request<WritingTask>('/api/writing/micro'),
 
   writingCheck: (sentence: string, ask?: string) =>
     request<SentenceCheck>('/api/writing/check', {

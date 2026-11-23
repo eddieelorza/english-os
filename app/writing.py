@@ -206,6 +206,51 @@ Be encouraging but honest. Do not rewrite his meaning or make it fancier: fix \
 what is wrong, keep his voice. A clumsy but correct sentence is ok=true."""
 
 
+MICRO_WORDS = 2
+
+
+def micro_words(conn: sqlite3.Connection) -> "list[dict]":
+    """Las palabras de la micro-producción (ADR-018, MVP 4).
+
+    Las que acabas de recordar hoy, luego las últimas recordadas, luego las
+    que se están aprendiendo: escribir con una palabra recién recuperada es
+    el paso de «recuerdo» a «uso».
+    """
+    start = db.study_day_start()
+    out: "list[dict]" = []
+    for since in (start, ""):
+        rows = conn.execute(
+            "SELECT w.word, w.meaning_es FROM recall_log r JOIN words w ON w.id = r.word_id "
+            "WHERE r.reviewed_at >= ? GROUP BY r.word_id ORDER BY MAX(r.reviewed_at) DESC",
+            (since,)).fetchall()
+        out += [dict(r) for r in rows if r["word"] not in {o["word"] for o in out}]
+        if len(out) >= MICRO_WORDS:
+            return out[:MICRO_WORDS]
+    for w in model.learning_words(conn, n=MICRO_WORDS + len(out)):
+        if w["word"] not in {o["word"] for o in out}:
+            out.append({"word": w["word"], "meaning_es": w.get("meaning_es")})
+    return out[:MICRO_WORDS]
+
+
+def micro(conn: sqlite3.Connection) -> dict:
+    """Una oración por palabra, sin modelo: el encargo sale de la base al instante.
+
+    Misma forma que `steps`, así que la escritura guiada, `check` y `finish`
+    (errores incluidos) se reusan tal cual.
+    """
+    words = micro_words(conn)   # sin palabras: steps vacío, la UI lo dice
+    return {
+        "scenario": "Micro: " + ", ".join(w["word"] for w in words),
+        "from_name": "", "message": "", "focus": activities.tense_focus(),
+        "steps": [{"word": w["word"], "starter": "",
+                   "ask": (f"Una oración tuya con «{w['word']}»"
+                           + (f" ({w['meaning_es']})" if w.get("meaning_es") else "")
+                           + ", sobre tu trabajo o tu día.")}
+                  for w in words],
+        "cached": False,
+    }
+
+
 def steps(conn: sqlite3.Connection, use_cache: bool = True) -> dict:
     """El encargo del día, partido en cuatro oraciones.
 
@@ -270,6 +315,9 @@ def check(conn: sqlite3.Connection, sentence: str,
     if not out.get("ok") and _looks_spanish(out.get("fixed", "")):
         return {"ok": True, "fixed": sentence, "note": "", "category": "",
                 "discarded": "translated"}
+    # "Almost" con la misma oración de vuelta no corrige nada: es un acierto.
+    if not out.get("ok") and out.get("fixed", "").strip().casefold() == sentence.casefold():
+        return {**out, "ok": True, "fixed": sentence, "note": "", "category": ""}
     return out
 
 
