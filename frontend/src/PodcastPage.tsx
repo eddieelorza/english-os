@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api'
-import type { Episode, Job, PodcastSummary } from './api'
+import type { Episode, Job, PodcastSummary, Narration, OwnVoiceStatus } from './api'
 import {
   Button,
   ErrorLine,
@@ -32,6 +32,7 @@ function jobSince(job: Job | null): number | null {
 const LENGTHS = [3, 5, 8]
 const TOPICS = ['Tech', 'Work', 'AI', 'Fintech', 'Daily Life', 'Random']
 const SPEEDS = [0.8, 1] as const
+const NO_MARKS: Narration['marks'] = []
 type Mode = 'shadow' | 'ear'
 
 /* Two hosts, two ways to listen: shadow (transcript lit turn by turn) or
@@ -116,6 +117,7 @@ export default function PodcastPage() {
   if (episode)
     return (
       <Player
+        key={episode.id}
         episode={episode}
         mode={mode}
         setMode={setMode}
@@ -243,15 +245,55 @@ function Player({
   const [current, setCurrent] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [quizOpen, setQuizOpen] = useState(false)
+  const [voice, setVoice] = useState<'coach' | 'own'>('coach')
+  const [own, setOwn] = useState<OwnVoiceStatus | null>(null)
+  const [ownAudio, setOwnAudio] = useState<Narration | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [since, setSince] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const listened = useRef(0)
+  const finished = useRef(false)
+  const requestVersion = useRef(0)
+  const resumeTurn = useRef<number | null>(null)
+  const speedRef = useRef(1)
+  const autoplay = useRef(false)
+  const source = voice === 'coach' ? episode.audio : ownAudio?.path
+  const marks = voice === 'coach' ? episode.marks : (ownAudio?.marks ?? NO_MARKS)
 
   useEffect(() => {
-    const el = new window.Audio(mediaUrl(episode.audio))
-    el.playbackRate = speed
+    let active = true
+    void api.ownVoice(episode.id).then((status) => {
+      if (active) setOwn(status)
+    }).catch((e) => {
+      if (active) setError(describeError(e instanceof Error ? e.message : null,
+        'Voice availability could not be checked.'))
+    })
+    return () => {
+      active = false
+      requestVersion.current += 1
+      // Source changes only replace the audio. Record this visit on exit or
+      // completion, once, regardless of how often the listener changes voice.
+      if (!finished.current && listened.current > 5) {
+        finished.current = true
+        void api.finishPodcast(episode.id, Math.round(listened.current))
+      }
+    }
+  }, [episode.id])
+
+  useEffect(() => {
+    if (!source) return
+    const el = new window.Audio(mediaUrl(source))
+    el.playbackRate = speedRef.current
+    const position = resumeTurn.current == null ? 0 : (marks[resumeTurn.current]?.start ?? 0)
+    el.onloadedmetadata = () => {
+      el.currentTime = position
+      setElapsed(position)
+    }
     el.ontimeupdate = () => {
+      if (el.paused) return
       setElapsed(el.currentTime)
-      const i = episode.marks.findIndex(
+      const i = marks.findIndex(
         (m) => el.currentTime >= m.start && el.currentTime < m.end,
       )
       setCurrent(i >= 0 ? i : null)
@@ -261,21 +303,68 @@ function Player({
       setPlaying(false)
       setCurrent(null)
       setQuizOpen(true)
-      void api.finishPodcast(episode.id, Math.round(listened.current))
-    }
-    audioRef.current = el
-    return () => {
-      el.pause()
-      if (listened.current > 5) {
+      if (!finished.current) {
+        finished.current = true
         void api.finishPodcast(episode.id, Math.round(listened.current))
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episode.id])
+    audioRef.current = el
+    if (autoplay.current) {
+      autoplay.current = false
+      void el.play().then(() => {
+        if (audioRef.current === el) setPlaying(true)
+      }).catch((e) => {
+        if (audioRef.current === el) setError(describeError(
+          e instanceof Error ? e.message : null, 'The audio could not be played.'))
+      })
+    }
+    return () => {
+      el.ontimeupdate = null
+      el.onended = null
+      el.onloadedmetadata = null
+      el.pause()
+      audioRef.current = null
+    }
+  }, [episode.id, source, marks])
+
+  async function prepareOwn(play = true) {
+    const version = ++requestVersion.current
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await api.narrateOwn(episode.id)
+      if (version !== requestVersion.current) return
+      autoplay.current = play
+      setOwnAudio(result)
+      setOwn((status) => status && { ...status, cached: true })
+    } catch (e) {
+      if (version === requestVersion.current) setError(describeError(
+        e instanceof Error ? e.message : null, 'The voice engine is unavailable.'))
+    } finally {
+      if (version === requestVersion.current) setLoading(false)
+    }
+  }
+
+  function changeVoice(next: 'coach' | 'own') {
+    if (next === voice || loading) return
+    audioRef.current?.pause()
+    setPlaying(false)
+    resumeTurn.current = current
+    setVoice(next)
+    setError(null)
+    if (next === 'own' && !ownAudio && own?.cached) {
+      void prepareOwn(false)
+    }
+  }
 
   function toggle() {
     const el = audioRef.current
-    if (!el) return
+    if (!el) {
+      if (voice === 'own' && !loading) {
+        void prepareOwn()
+      }
+      return
+    }
     if (playing) {
       el.pause()
       setPlaying(false)
@@ -289,17 +378,18 @@ function Player({
     const el = audioRef.current
     if (!el) return
     const i = current ?? 0
-    el.currentTime = episode.marks[i].start
+    el.currentTime = marks[i].start
     void el.play()
     setPlaying(true)
   }
 
   function changeSpeed(s: number) {
     setSpeed(s)
+    speedRef.current = s
     if (audioRef.current) audioRef.current.playbackRate = s
   }
 
-  const total = episode.marks.length ? episode.marks[episode.marks.length - 1].end : 0
+  const total = marks.length ? marks[marks.length - 1].end : 0
   const clock = (t: number) =>
     `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
@@ -321,13 +411,23 @@ function Player({
 
       {/* How do you want to listen? */}
       <div className="border-rule mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-y py-3">
-        <Button size="sm" onClick={toggle} className="inline-flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={(event) => {
+            setSince(performance.timeOrigin + event.timeStamp)
+            toggle()
+          }}
+          disabled={loading}
+          className="inline-flex items-center gap-2"
+        >
           <SpeakerIcon size={13} playing={playing} />
-          {playing ? 'Pause' : 'Play'}
+          {loading ? 'Preparing the voice…' : playing ? 'Pause'
+            : voice === 'own' && !own?.cached ? `My voice · ~${own?.chars ?? 0} credits` : 'Play'}
         </Button>
 
         <button
           onClick={repeatTurn}
+          disabled={!source || loading}
           className="text-cobalt-deep hover:text-cobalt text-xs font-semibold tracking-label uppercase"
         >
           Repeat turn
@@ -352,6 +452,30 @@ function Player({
           ))}
         </div>
 
+        {own?.configured && (
+          <div className="flex items-baseline gap-2" role="radiogroup" aria-label="Voice">
+            {(['coach', 'own'] as const).map((v) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={voice === v}
+                disabled={loading}
+                onClick={(event) => {
+                  setSince(performance.timeOrigin + event.timeStamp)
+                  changeVoice(v)
+                }}
+                className={`text-xs font-semibold transition-colors ${
+                  voice === v
+                    ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
+                    : 'text-ghost hover:text-ink-soft'
+                }`}
+              >
+                {v === 'coach' ? 'Coach' : 'My voice'}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-baseline gap-2">
           <span className="text-ghost text-xs font-semibold tracking-label uppercase">
             Mode
@@ -375,6 +499,9 @@ function Player({
           {clock(elapsed)} / {clock(total)}
         </span>
       </div>
+
+      {loading && <Waiting since={since}>Preparing your voice for host B…</Waiting>}
+      {error && <ErrorLine>{error}</ErrorLine>}
 
       {/* Shadowing: the transcript, lit turn by turn */}
       {mode === 'shadow' ? (

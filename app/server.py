@@ -18,17 +18,19 @@ from pathlib import Path
 from contextlib import contextmanager
 from typing import Iterator, Literal, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 
 from app import (activities, ai, backlog, coach, conversation, day, db, deck, gate,
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
-                 baseline, experiments, recall, srs, tts, vocab_audit, writing)
+                 baseline, experiments, recall, settings, srs, tts, vocab_audit, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -69,6 +71,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _local_settings_host(host: str) -> bool:
+    match = re.fullmatch(r"(?:127\.0\.0\.1|localhost):([0-9]{1,5})", host)
+    return bool(match and 0 < int(match[1]) <= 65535)
+
+
+@app.middleware("http")
+async def protect_settings(request: Request, call_next):
+    if request.url.path.rstrip("/") in ("/api/settings", "/api/settings/test/elevenlabs"):
+        if request.method in ("PUT", "POST", "PATCH", "DELETE"):
+            hosts = request.headers.getlist("host")
+            origins = request.headers.getlist("origin")
+            if (len(hosts) != 1 or not _local_settings_host(hosts[0])
+                    or len(origins) > 1
+                    or (origins and not (
+                        origins[0].startswith("http://")
+                        and _local_settings_host(origins[0][7:])))):
+                return JSONResponse({"detail": "Settings can only be changed from localhost."}, status_code=403)
+            if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
+                return JSONResponse({"detail": "Settings requests must use application/json."}, status_code=415)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    return await call_next(request)
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_settings_validation(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith("/api/settings"):
+        # Pydantic's default error includes input, even for malformed JSON.
+        fields = sorted({part for error in exc.errors() for part in error["loc"]
+                         if isinstance(part, str) and part in settings.BY_KEY})
+        label = ", ".join(fields) or "body"
+        return JSONResponse({"detail": f"{label}: invalid settings request"}, status_code=422)
+    return await request_validation_exception_handler(request, exc)
 
 SORTS = {
     "recent": "COALESCE(last_reviewed_on, '') DESC, word COLLATE NOCASE",
@@ -665,13 +703,13 @@ def post_backlog_spread() -> dict:
         return backlog.spread(conn)
 
 
-@app.get("/api/settings")
-def get_settings() -> dict:
+@app.get("/api/session/settings")
+def get_session_settings() -> dict:
     with get_db() as conn:
         return session.settings(conn)
 
 
-@app.patch("/api/settings")
+@app.patch("/api/session/settings")
 def patch_settings(patch: dict) -> dict:
     with get_db() as conn:
         try:
@@ -984,6 +1022,49 @@ def submit_quiz(text_id: int, body: QuizSubmit) -> dict:
         return {"score": score, "total": len(questions)}
 
 
+def _own_voice_text(text_id: int) -> tuple[str, str, list[dict]]:
+    with get_db() as conn:
+        row = conn.execute("SELECT kind, body, correction FROM texts WHERE id=?",
+                           (text_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "text not found")
+    if row["kind"] == "podcast":
+        try:
+            turns = json.loads(row["correction"])["turns"]
+            if not turns or not all(t["speaker"] in ("A", "B") and
+                                    isinstance(t["text"], str) and t["text"].strip()
+                                    for t in turns):
+                raise ValueError("invalid turns")
+        except (ValueError, TypeError, KeyError):
+            raise HTTPException(422, "podcast has no valid turns") from None
+        return "podcast", row["body"] or "", turns
+    if not row["body"] or not row["body"].strip():
+        raise HTTPException(422, "text has no body")
+    return "reading", row["body"], []
+
+
+@app.get("/api/texts/{text_id}/own-voice")
+def own_voice_status(text_id: int) -> dict:
+    kind, body, turns = _own_voice_text(text_id)
+    return {"configured": tts.own_voice_configured(),
+            "cached": tts.own_voice_cached(kind, body, turns),
+            "chars": tts.own_voice_chars(kind, body, turns)}
+
+
+@app.post("/api/texts/{text_id}/own-voice")
+def narrate_own_text(text_id: int) -> dict:
+    kind, body, turns = _own_voice_text(text_id)
+    try:
+        if kind == "podcast":
+            with jobs._exclusive():
+                result = tts.narrate_turns_own(turns)
+        else:
+            result = tts.narrate_own(body)
+    except tts.TTSUnavailable as exc:
+        raise HTTPException(503, str(exc)) from None
+    return {k: result[k] for k in ("path", "marks", "cached")}
+
+
 @app.post("/api/texts/{text_id}/narrate")
 def narrate_text(text_id: int) -> dict:
     """Synthesize the reading (cached) and store the sentence timings."""
@@ -1179,6 +1260,35 @@ def personal_model() -> dict:
 @app.get("/api/ai/status")
 def ai_status() -> dict:
     return ai.status()
+
+
+class SettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    values: dict[str, StrictStr | None]
+
+
+class SettingsVoiceTest(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+
+@app.get("/api/settings")
+def get_settings() -> dict:
+    return settings.snapshot()
+
+
+@app.put("/api/settings")
+def put_settings(req: SettingsUpdate) -> dict:
+    try:
+        return settings.update(req.values)
+    except settings.InvalidSetting as exc:
+        raise HTTPException(422, str(exc)) from None
+    except (OSError, ValueError):
+        raise HTTPException(500, "Could not save settings. Check local file permissions.") from None
+
+
+@app.post("/api/settings/test/elevenlabs")
+def test_settings_voice(req: SettingsVoiceTest) -> dict:
+    return tts.test_own_voice()
 
 
 @app.post("/api/generate/reading", status_code=201)

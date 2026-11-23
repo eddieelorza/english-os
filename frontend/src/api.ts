@@ -163,6 +163,18 @@ export interface NarrationMark {
   end: number
 }
 
+export interface Narration {
+  path: string
+  marks: NarrationMark[]
+  cached: boolean
+}
+
+export interface OwnVoiceStatus {
+  configured: boolean
+  cached: boolean
+  chars: number
+}
+
 export interface Question {
   /* Readings call it `question`; activities call it `prompt`. */
   question?: string
@@ -807,6 +819,27 @@ export interface AIStatus {
   ollama_models: string[]
 }
 
+export type SettingsField = {
+  key: string
+  label: string
+  options: string[]
+  help: string
+} & (
+  | { kind: 'secret'; set: boolean; hint: string }
+  | { kind: 'text' | 'select' | 'number'; value: string }
+)
+
+export interface SettingsGroup {
+  name: string
+  fields: SettingsField[]
+}
+
+export interface ProviderSettings {
+  groups: SettingsGroup[]
+}
+
+export type VoiceTest = { ok: true; voice_name: string } | { ok: false; error: string }
+
 export interface GenerateResult {
   id: number
   title: string
@@ -1033,10 +1066,10 @@ export const api = {
       `/api/backlog${newPerDay != null ? `?new_per_day=${newPerDay}` : ''}`,
     ),
 
-  settings: () => request<Settings>('/api/settings'),
+  sessionSettings: () => request<Settings>('/api/session/settings'),
 
   patchSettings: (patch: Partial<Settings>) =>
-    request<Settings>('/api/settings', {
+    request<Settings>('/api/session/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
@@ -1147,10 +1180,16 @@ export const api = {
     }),
 
   narrate: (textId: number) =>
-    request<{ path: string; marks: NarrationMark[]; cached: boolean }>(
+    request<Narration>(
       `/api/texts/${textId}/narrate`,
       { method: 'POST' },
     ),
+
+  ownVoice: (textId: number) =>
+    request<OwnVoiceStatus>(`/api/texts/${textId}/own-voice`),
+
+  narrateOwn: (textId: number) =>
+    request<Narration>(`/api/texts/${textId}/own-voice`, { method: 'POST' }),
 
   /* Conversación hablada (M19). `say` sube audio y devuelve los dos lados
      del turno; tarda ~5 s, así que la pantalla tiene que enseñar que está
@@ -1204,6 +1243,13 @@ export const api = {
   },
 
   aiStatus: () => request<AIStatus>('/api/ai/status'),
+  settings: () => request<ProviderSettings>('/api/settings', { cache: 'no-store' }),
+  saveSettings: (values: Record<string, string | null>) => request<ProviderSettings>('/api/settings', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }),
+  }),
+  testVoice: () => request<VoiceTest>('/api/settings/test/elevenlabs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+  }),
 
   generateReading: (opts: { level: string; minutes: number; topic: string }) =>
     request<GenerateResult>('/api/generate/reading', {

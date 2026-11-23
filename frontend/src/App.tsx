@@ -9,6 +9,7 @@ import { RecallPage } from './RecallSession'
 import SpeakingPage from './SpeakingPage'
 import ShadowingPage from './ShadowingPage'
 import StatsPage from './StatsPage'
+import SettingsPage from './SettingsPage'
 import PracticePage from './PracticePage'
 import PodcastPage from './PodcastPage'
 import WritingPage from './WritingPage'
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/speaking" element={<SpeakingPage />} />
           <Route path="/shadowing" element={<ShadowingPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

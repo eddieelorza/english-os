@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type NarrationMark } from './api'
+import { api, type NarrationMark, type Narration, type OwnVoiceStatus } from './api'
 import { SpeakerIcon, mediaUrl } from './Audio'
 import { Button, ErrorLine, Waiting, describeError } from './ui'
 
@@ -8,7 +8,14 @@ const SPEEDS = [0.8, 1] as const
 /* Shadowing rig: the coach reads, the current sentence lights up, and you can
    drop the voice and read yourself at any moment ("Now I read"). Repeat
    replays the sentence you are on — the shadowing loop. */
-export default function ReadingPlayer({
+export default function ReadingPlayer(props: {
+  textId: number
+  onSentence: (index: number | null) => void
+}) {
+  return <ReadingAudio key={props.textId} {...props} />
+}
+
+function ReadingAudio({
   textId,
   onSentence,
 }: {
@@ -25,29 +32,58 @@ export default function ReadingPlayer({
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
   const [current, setCurrent] = useState<number | null>(null)
+  const [voice, setVoice] = useState<'coach' | 'own'>('coach')
+  const [own, setOwn] = useState<OwnVoiceStatus | null>(null)
+  const recordings = useRef<Partial<Record<'coach' | 'own', Narration>>>({})
+  const requestVersion = useRef(0)
+  const speedRef = useRef(1)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => onSentence(current), [current, onSentence])
 
   useEffect(() => {
+    let active = true
+    void api.ownVoice(textId).then((status) => {
+      if (active) setOwn(status)
+    }).catch((e) => {
+      if (active) setError(describeError(e instanceof Error ? e.message : null,
+        'Voice availability could not be checked.'))
+    })
     return () => {
-      audioRef.current?.pause()
-      onSentence(null)
+      active = false
+      requestVersion.current += 1
+      const el = audioRef.current
+      if (el) {
+        el.ontimeupdate = null
+        el.onended = null
+        el.onloadedmetadata = null
+        el.pause()
+      }
+      audioRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [textId])
 
-  async function prepare() {
+  useEffect(() => () => onSentence(null), [onSentence])
+
+  async function prepare(target = voice, autoplay = true) {
+    const version = ++requestVersion.current
     setLoading(true)
-    setSince(Date.now())
     setError(null)
     try {
-      const r = await api.narrate(textId)
+      const r = recordings.current[target] ?? await (
+        target === 'own' ? api.narrateOwn(textId) : api.narrate(textId)
+      )
+      if (version !== requestVersion.current) return
+      recordings.current[target] = r
+      if (target === 'own') setOwn((status) => status && { ...status, cached: true })
       setMarks(r.marks)
       setSrc(r.path)
       const el = new window.Audio(mediaUrl(r.path))
-      el.playbackRate = speed
+      el.playbackRate = speedRef.current
+      const position = current == null ? 0 : (r.marks[current]?.start ?? 0)
+      el.onloadedmetadata = () => { el.currentTime = position }
       el.ontimeupdate = () => {
+        if (el.paused) return
         const t = el.currentTime
         const i = r.marks.findIndex((m) => t >= m.start && t < m.end)
         setCurrent(i >= 0 ? i : null)
@@ -57,23 +93,48 @@ export default function ReadingPlayer({
         setCurrent(null)
       }
       audioRef.current = el
-      void el.play()
-      setPlaying(true)
+      if (autoplay) {
+        await el.play()
+        if (version === requestVersion.current) setPlaying(true)
+      }
     } catch (e) {
-      setError(
+      if (version === requestVersion.current) setError(
         describeError(
           e instanceof Error ? e.message : null,
           'The voice engine is unavailable. You can still read on your own.',
         ),
       )
     } finally {
-      setLoading(false)
+      if (version === requestVersion.current) setLoading(false)
+    }
+  }
+
+  function changeVoice(next: 'coach' | 'own') {
+    if (next === voice || loading) return
+    const el = audioRef.current
+    if (el) {
+      el.ontimeupdate = null
+      el.onended = null
+      el.onloadedmetadata = null
+      el.pause()
+    }
+    audioRef.current = null
+    setPlaying(false)
+    setVoice(next)
+    setSrc(null)
+    setMarks(null)
+    setError(null)
+    // An uncached paid voice is generated only by the labelled play button.
+    if (recordings.current[next] || (next === 'own' && own?.cached)) {
+      void prepare(next, false)
     }
   }
 
   function toggle() {
     const el = audioRef.current
-    if (!el) return void prepare()
+    if (!el) {
+      return void prepare()
+    }
     if (playing) {
       el.pause()
       setPlaying(false)
@@ -100,6 +161,7 @@ export default function ReadingPlayer({
 
   function changeSpeed(s: number) {
     setSpeed(s)
+    speedRef.current = s
     if (audioRef.current) audioRef.current.playbackRate = s
   }
 
@@ -109,12 +171,17 @@ export default function ReadingPlayer({
         <Button
           variant="primary"
           size="sm"
-          onClick={toggle}
+          onClick={(event) => {
+            setSince(performance.timeOrigin + event.timeStamp)
+            toggle()
+          }}
           disabled={loading}
           className="inline-flex items-center gap-2"
         >
           <SpeakerIcon size={13} playing={playing} />
-          {loading ? 'Preparing the voice…' : playing ? 'Pause' : src ? 'Play' : 'Listen & shadow'}
+          {loading ? 'Preparing the voice…' : playing ? 'Pause' : src ? 'Play'
+            : voice === 'own' && !own?.cached ? `My voice · ~${own?.chars ?? 0} credits`
+            : 'Listen & shadow'}
         </Button>
 
         {src && (
@@ -123,25 +190,6 @@ export default function ReadingPlayer({
               Repeat sentence
             </Button>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-ghost text-xs font-semibold tracking-label uppercase">
-                Speed
-              </span>
-              {SPEEDS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => changeSpeed(s)}
-                  className={`tnum text-xs font-semibold transition-colors ${
-                    speed === s
-                      ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
-                      : 'text-ghost hover:text-ink-soft'
-                  }`}
-                >
-                  {s}×
-                </button>
-              ))}
-            </div>
-
             {playing && (
               <Button variant="text" size="sm" onClick={stopAndRead}>
                 Now I read
@@ -149,13 +197,63 @@ export default function ReadingPlayer({
             )}
           </>
         )}
+        <div className="flex items-baseline gap-2">
+          <span className="text-ghost text-xs font-semibold tracking-label uppercase">
+            Speed
+          </span>
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => changeSpeed(s)}
+              className={`tnum text-xs font-semibold transition-colors ${
+                speed === s
+                  ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
+                  : 'text-ghost hover:text-ink-soft'
+              }`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
+        {own?.configured && (
+          <div className="flex items-baseline gap-2" role="radiogroup" aria-label="Voice">
+            {(['coach', 'own'] as const).map((v) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={voice === v}
+                disabled={loading}
+                onClick={(event) => {
+                  setSince(performance.timeOrigin + event.timeStamp)
+                  changeVoice(v)
+                }}
+                className={`text-xs font-semibold transition-colors ${
+                  voice === v
+                    ? 'text-cobalt-deep underline decoration-2 underline-offset-4'
+                    : 'text-ghost hover:text-ink-soft'
+                }`}
+              >
+                {v === 'coach' ? 'Coach' : 'My voice'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading && (
-        <Waiting since={since}>The coach is reading it through before it speaks…</Waiting>
+        <Waiting since={since}>
+          {voice === 'own' ? 'Preparing your voice…' : 'The coach is reading it through before it speaks…'}
+        </Waiting>
       )}
 
-      {error && <ErrorLine onRetry={() => void prepare()}>{error}</ErrorLine>}
+      {error && (
+        <ErrorLine onRetry={() => {
+          setSince(Date.now())
+          void prepare()
+        }}>
+          {error}
+        </ErrorLine>
+      )}
     </>
   )
 }

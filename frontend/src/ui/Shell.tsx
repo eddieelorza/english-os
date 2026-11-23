@@ -49,6 +49,7 @@ const GROUPS: { tab: string; label?: string; icon: LucideIcon; lessons: Lesson[]
     lessons: [
       { n: '09', name: 'Vocabulary', path: '/vocabulary' },
       { n: '10', name: 'Stats', path: '/stats' },
+      { n: '11', name: 'Settings', path: '/settings' },
     ],
   },
 ]
