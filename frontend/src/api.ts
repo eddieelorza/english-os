@@ -64,6 +64,44 @@ export interface GlossQueue {
   proposed: GlossProposal[]
 }
 
+export type RecallExercise = 'cloze' | 'meaning' | 'image'
+
+export interface RecallItem {
+  word_id: number
+  card_id: number | null
+  exercise: RecallExercise
+  meaning_es: string
+  definition_en: string | null
+  sentence?: string
+  hint?: string
+  translation?: string
+  image?: string
+  is_new: boolean
+}
+
+export interface RecallNext {
+  item: RecallItem | null
+  due: number
+  new_left: number
+}
+
+export interface RecallResult {
+  verdict: 'correct' | 'close' | 'wrong'
+  rating: number
+  expected: string
+  word: string
+  given: string
+  example_en: string
+  example_es: string | null
+  meaning_es: string
+  image: string | null
+  audio: string | null
+  interval_days: number
+  interval: string
+  due: number
+  new_left: number
+}
+
 export interface Summary {
   words: Record<WordStatus, number>
   words_total: number
@@ -831,6 +869,15 @@ export const api = {
   text: (id: number) => request<TextDetail>(`/api/texts/${id}`),
 
   reviewQueue: () => request<ReviewQueue>('/api/review/queue'),
+
+  recallNext: () => request<RecallNext>('/api/recall/next'),
+
+  recallAnswer: (wordId: number, exercise: RecallExercise, answer: string) =>
+    request<RecallResult>('/api/recall/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word_id: wordId, exercise, answer }),
+    }),
 
   reviewAnswer: (wordId: number, rating: 1 | 2 | 3 | 4) =>
     request<ReviewAnswerResult>('/api/review/answer', {

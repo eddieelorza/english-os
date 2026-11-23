@@ -28,7 +28,7 @@ from app import (activities, ai, backlog, coach, conversation, db, deck, gate,
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
-                 srs, tts, vocab_audit, writing)
+                 recall, srs, tts, vocab_audit, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -378,6 +378,27 @@ def pause_resume() -> dict:
 
 
 # ── Review / FSRS (M4) ───────────────────────────────────────────────────
+
+class RecallAnswer(BaseModel):
+    word_id: int
+    exercise: Literal["cloze", "meaning", "image"]
+    answer: str = Field(max_length=80)
+
+
+@app.get("/api/recall/next")
+def recall_next() -> dict:
+    with get_db() as conn:
+        return recall.next_item(conn)
+
+
+@app.post("/api/recall/answer")
+def recall_answer(body: RecallAnswer) -> dict:
+    with get_db() as conn:
+        try:
+            return recall.answer(conn, body.word_id, body.exercise, body.answer)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
 
 class ReviewAnswer(BaseModel):
     word_id: int

@@ -204,6 +204,10 @@ def streak(conn: sqlite3.Connection) -> int:
         "SELECT DISTINCT substr(datetime(reviewed_at, ?), 1, 10) "
         "FROM review_history WHERE source='fsrs'",
         (f"-{db.rollover_hour()} hours",))}
+    active |= {r[0] for r in conn.execute(
+        "SELECT DISTINCT substr(datetime(reviewed_at, ?), 1, 10) "
+        "FROM recall_log",
+        (f"-{db.rollover_hour()} hours",))}
     # Una actividad cuenta el día en que se terminó, no el día para el que se
     # generó: terminar hoy la de ayer no repara la racha de ayer.
     active |= {r[0] for r in conn.execute(

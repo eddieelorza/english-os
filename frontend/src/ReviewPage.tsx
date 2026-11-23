@@ -17,6 +17,7 @@ import type {
   SpreadResult,
 } from './api'
 import { PlayButton } from './Audio'
+import RecallSession from './RecallSession'
 import {
   Button,
   ButtonLink,
@@ -587,6 +588,7 @@ function SessionSetup({ onStarted }: { onStarted: (s: SessionProgress) => void }
             </button>
           ))}
       </div>
+      {nothing && <RecallSession />}
     </motion.div>
   )
 }
@@ -796,6 +798,7 @@ function Finished({
           Nothing else is scheduled for the next two weeks.
         </p>
       )}
+      <RecallSession />
     </motion.div>
   )
 }
@@ -889,7 +892,7 @@ function TodaysMaterial({ material }: { material: Material | null }) {
 
   return (
     <p className="font-book text-ghost mx-auto mt-6 max-w-[46ch] text-sm italic">
-      Today\u2019s reading, drill and message are ready.
+      Today’s reading, drill and message are ready.
     </p>
   )
 }

@@ -95,6 +95,37 @@ CREATE TABLE IF NOT EXISTS review_history (
 CREATE INDEX IF NOT EXISTS idx_review_word ON review_history(word_id);
 CREATE INDEX IF NOT EXISTS idx_review_at   ON review_history(reviewed_at);
 
+-- Recall conserva su propio scheduling; nunca modifica el de words.
+CREATE TABLE IF NOT EXISTS cards (
+    id               INTEGER PRIMARY KEY,
+    word_id          INTEGER NOT NULL REFERENCES words(id),
+    track            TEXT NOT NULL DEFAULT 'productive',
+    fsrs_card        TEXT NOT NULL,
+    due              TEXT NOT NULL,
+    stability        REAL,
+    difficulty       REAL,
+    lapses           INTEGER NOT NULL DEFAULT 0,
+    reps             INTEGER NOT NULL DEFAULT 0,
+    created_at       TEXT NOT NULL,
+    UNIQUE(word_id, track)
+);
+CREATE INDEX IF NOT EXISTS idx_cards_due ON cards(due);
+
+CREATE TABLE IF NOT EXISTS recall_log (
+    id               INTEGER PRIMARY KEY,
+    card_id          INTEGER NOT NULL REFERENCES cards(id),
+    word_id          INTEGER NOT NULL,
+    reviewed_at      TEXT NOT NULL,
+    exercise         TEXT NOT NULL,
+    expected         TEXT NOT NULL,
+    answer           TEXT NOT NULL,
+    verdict          TEXT NOT NULL,
+    rating           INTEGER NOT NULL,
+    stability_before REAL,
+    stability_after  REAL
+);
+CREATE INDEX IF NOT EXISTS idx_recall_log_at ON recall_log(reviewed_at);
+
 CREATE TABLE IF NOT EXISTS errors (
     id               INTEGER PRIMARY KEY,
     date             TEXT,
