@@ -1,5 +1,6 @@
 # Secrets
 .env
+.env.bak
 .env.local
 .env.*.local
 
