@@ -529,6 +529,36 @@ export interface ResumeResult {
 
 export type DayBlockKey = 'review' | 'recall' | 'write' | 'reading'
 
+/* Check-in (ADR-018): estimates with low confidence, never a certified level. */
+export interface VocabResult {
+  size: number
+  cefr: string
+  false_alarms: number
+  confidence: 'low' | 'very low'
+  bands: { band: number; hits: number; known: number }[]
+  taken_at?: string
+}
+
+export interface DictationResult {
+  band: string
+  accuracy: number
+  confidence: 'low'
+  levels: { level: string; accuracy: number }[]
+  items: { level: string; expected: string; given: string; accuracy: number }[]
+  taken_at?: string
+}
+
+export interface BaselineLatest {
+  vocab: VocabResult | null
+  dictation: DictationResult | null
+}
+
+export interface DictationItem {
+  id: number
+  level: string
+  audio: string
+}
+
 export interface DayBlock {
   key: DayBlockKey
   title: string
@@ -808,6 +838,22 @@ export interface Material {
 
 export const api = {
   summary: () => request<Summary>('/api/summary'),
+
+  baseline: () => request<BaselineLatest>('/api/baseline'),
+  baselineVocabItems: () => request<{ items: string[] }>('/api/baseline/vocab'),
+  baselineVocab: (answers: Record<string, boolean>) =>
+    request<VocabResult>('/api/baseline/vocab', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    }),
+  baselineDictationItems: () => request<{ items: DictationItem[] }>('/api/baseline/dictation'),
+  baselineDictation: (responses: string[]) =>
+    request<DictationResult>('/api/baseline/dictation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responses }),
+    }),
 
   glossQueue: () => request<GlossQueue>('/api/vocab/audit'),
 

@@ -28,7 +28,7 @@ from app import (activities, ai, backlog, coach, conversation, day, db, deck, ga
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
-                 recall, srs, tts, vocab_audit, writing)
+                 baseline, recall, srs, tts, vocab_audit, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -396,6 +396,56 @@ def recall_answer(body: RecallAnswer) -> dict:
     with get_db() as conn:
         try:
             return recall.answer(conn, body.word_id, body.exercise, body.answer)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+
+# ── Línea base: vocabulario sí/no y dictado, sin modelo (ADR-018) ─────────
+
+class VocabAnswers(BaseModel):
+    answers: dict[str, bool] = Field(max_length=200)
+
+
+class DictationAnswers(BaseModel):
+    responses: list[str] = Field(max_length=20)
+
+
+@app.get("/api/baseline")
+def baseline_latest() -> dict:
+    with get_db() as conn:
+        return baseline.latest(conn)
+
+
+@app.get("/api/baseline/vocab")
+def baseline_vocab_items() -> dict:
+    return {"items": baseline.vocab_items()}
+
+
+@app.post("/api/baseline/vocab", status_code=201)
+def baseline_vocab(body: VocabAnswers) -> dict:
+    with get_db() as conn:
+        try:
+            return baseline.save(conn, "vocab", baseline.score_vocab(body.answers),
+                                 body.answers)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+
+@app.get("/api/baseline/dictation")
+def baseline_dictation_items() -> dict:
+    try:
+        return {"items": baseline.dictation_items()}
+    except tts.TTSUnavailable as exc:
+        raise HTTPException(503, str(exc))
+
+
+@app.post("/api/baseline/dictation", status_code=201)
+def baseline_dictation(body: DictationAnswers) -> dict:
+    responses = [r[:300] for r in body.responses]
+    with get_db() as conn:
+        try:
+            return baseline.save(conn, "dictation",
+                                 baseline.score_dictation(responses), responses)
         except ValueError as exc:
             raise HTTPException(422, str(exc))
 

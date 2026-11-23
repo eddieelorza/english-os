@@ -13,6 +13,7 @@ import PracticePage from './PracticePage'
 import PodcastPage from './PodcastPage'
 import WritingPage from './WritingPage'
 import MicroWritingPage from './MicroWriting'
+import CheckInPage from './CheckInPage'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/recall" element={<RecallPage />} />
           <Route path="/write" element={<MicroWritingPage />} />
+          <Route path="/check-in" element={<CheckInPage />} />
           <Route path="/podcast" element={<PodcastPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/writing" element={<WritingPage />} />

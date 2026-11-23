@@ -126,6 +126,15 @@ CREATE TABLE IF NOT EXISTS recall_log (
 );
 CREATE INDEX IF NOT EXISTS idx_recall_log_at ON recall_log(reviewed_at);
 
+-- Línea base por habilidad (ADR-018): una fila por prueba hecha.
+CREATE TABLE IF NOT EXISTS assessments (
+    id       INTEGER PRIMARY KEY,
+    kind     TEXT NOT NULL,          -- vocab | dictation
+    taken_at TEXT NOT NULL,
+    result   TEXT NOT NULL,          -- JSON de score_*
+    answers  TEXT NOT NULL           -- JSON de lo respondido, para reanalizar
+);
+
 CREATE TABLE IF NOT EXISTS errors (
     id               INTEGER PRIMARY KEY,
     date             TEXT,

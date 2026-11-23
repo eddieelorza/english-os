@@ -32,7 +32,12 @@ export function PlayButton({
   size = 14,
   className = '',
   autoPlay = false,
+  disabled = false,
+  onPlay,
 }: {
+  /* For tests that ration replays (the check-in dictation). */
+  disabled?: boolean
+  onPlay?: () => void
   src: string | null
   label: string
   size?: number
@@ -83,15 +88,18 @@ export function PlayButton({
     } else {
       void ref.current.play()
       setPlaying(true)
+      onPlay?.()
     }
   }
 
   return (
     <button
+      type="button"
       onClick={toggle}
+      disabled={disabled && !playing}
       aria-label={label}
       title={label}
-      className={`text-cobalt-deep hover:text-cobalt inline-flex shrink-0 items-center transition-colors ${
+      className={`text-cobalt-deep hover:text-cobalt inline-flex shrink-0 items-center transition-colors disabled:text-ghost disabled:cursor-not-allowed ${
         playing ? 'text-cobalt' : ''
       } ${className}`}
     >

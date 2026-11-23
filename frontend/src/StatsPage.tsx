@@ -1,12 +1,39 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
-import type { Stats } from './api'
+import type { BaselineLatest, Stats } from './api'
+import { Link } from 'react-router-dom'
 import { ErrorLine, Page, PageHeader, RuledSkeleton, fmt } from './ui'
 
 /* Lesson 06: evidence over sensation (Vision P4), drawn.
    Chart grammar per the dataviz method: one series per chart (cobalt, no
    legends), thin marks with rounded data-ends, hairline grid, text in ink
    tokens, hover tooltips, honest gaps where data is missing. */
+/* The check-in's latest estimates, one line. Its own fetch: if it fails the
+   stats still render. */
+function CheckInLine() {
+  const [latest, setLatest] = useState<BaselineLatest | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    api.baseline().then(setLatest).catch(() => setFailed(true))
+  }, [])
+  if (failed || !latest) return null
+  const parts = [
+    latest.vocab && `vocabulary ~${fmt(latest.vocab.size)} words (${latest.vocab.cefr})`,
+    latest.dictation && `dictation up to ${latest.dictation.band}`,
+  ].filter(Boolean)
+  return (
+    <section className="border-rule mt-8 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b pb-3">
+      <h3 className="text-sm font-bold tracking-tight">Check-in</h3>
+      <p className="font-book text-ink-soft min-w-0 flex-1 text-sm">
+        {parts.length ? `Estimates, not levels: ${parts.join(' · ')}.` : 'Not taken yet.'}
+      </p>
+      <Link to="/check-in" className="text-cobalt-deep text-sm font-semibold hover:underline">
+        Open check-in →
+      </Link>
+    </section>
+  )
+}
+
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState(false)
@@ -56,6 +83,8 @@ export default function StatsPage() {
             <Fact k="Texts read" v={fmt(stats.totals.texts_read)} />
             <Fact k="Streak" v={`${fmt(stats.totals.streak_days)} d`} />
           </dl>
+
+          <CheckInLine />
 
           {/* What the level is actually read from (ADR-008): four sources,
               each with its sample. A gap here is stated, never guessed. */}
