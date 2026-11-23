@@ -135,6 +135,28 @@ CREATE TABLE IF NOT EXISTS assessments (
     answers  TEXT NOT NULL           -- JSON de lo respondido, para reanalizar
 );
 
+-- Experimentos por ítem (ADR-018): grupo de cada palabra y su prueba diferida.
+CREATE TABLE IF NOT EXISTS experiment_arms (
+    experiment  TEXT NOT NULL,       -- E1 | E2
+    word_id     INTEGER NOT NULL REFERENCES words(id),
+    arm         TEXT NOT NULL,
+    assigned_at TEXT NOT NULL,
+    PRIMARY KEY (experiment, word_id)
+);
+CREATE TABLE IF NOT EXISTS probes (
+    id          INTEGER PRIMARY KEY,
+    experiment  TEXT NOT NULL,
+    word_id     INTEGER NOT NULL REFERENCES words(id),
+    arm         TEXT NOT NULL,
+    after_days  INTEGER NOT NULL,    -- 7 | 30
+    due_at      TEXT NOT NULL,
+    answered_at TEXT,
+    expected    TEXT,
+    answer      TEXT,
+    verdict     TEXT                 -- correct | close | wrong | skipped
+);
+CREATE INDEX IF NOT EXISTS idx_probes_due ON probes(answered_at, due_at);
+
 CREATE TABLE IF NOT EXISTS errors (
     id               INTEGER PRIMARY KEY,
     date             TEXT,

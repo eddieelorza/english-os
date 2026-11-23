@@ -66,3 +66,10 @@ Experimentos por ítem, con Eddie como único sujeto: glosa reparada vs sin
 reparar (lapsos y prueba a 30 días); respuesta escrita vs auto-calificada
 (prueba productiva a 7 y 30 días). Y la compuerta de producto: ≥ 4 días por
 semana y ≥ 60% del material terminado tras cuatro semanas de sesión guiada.
+
+Implementación (`app/experiments.py`): la asignación alterna entre grupos al
+entrar la palabra (E1: glosa marcada por la auditoría, sólo palabras en
+estudio; E2: al introducirla en Recall). La prueba diferida es la oración del
+ejemplo con hueco y pista de letras, sin glosa, sin tocar FSRS y sin mostrar
+la respuesta. Una palabra sin hueco posible no entra al experimento. Las 32
+glosas aceptadas antes del arranque quedan fuera. Sin fecha de cierre todavía.

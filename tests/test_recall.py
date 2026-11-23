@@ -11,7 +11,7 @@ from unittest import mock
 
 from fsrs import Card, State
 
-from app import db, model, recall, srs
+from app import db, experiments, model, recall, srs
 
 
 class TestGrade(unittest.TestCase):
@@ -88,6 +88,10 @@ class RecallCase(unittest.TestCase):
         rollover = mock.patch.object(db, "rollover_hour", return_value=4)
         rollover.start()
         self.addCleanup(rollover.stop)
+        # E2 se prueba en test_experiments; aquí toda palabra entra a Recall.
+        arm = mock.patch.object(experiments, "arm", return_value="recall")
+        arm.start()
+        self.addCleanup(arm.stop)
 
     def word(self, text="defeat", stability=8, state="REVIEW", **fields):
         wid = db.upsert_word(self.conn, {

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fsrs import Card, Rating, State
 
-from app import db, deck, glossary, srs
+from app import db, deck, experiments, glossary, srs
 
 NEW_PER_DAY = 5
 MIN_RECEPTIVE_STABILITY = 7
@@ -20,6 +20,10 @@ _ELIGIBLE = """
     AND trim(COALESCE(w.example_en, '')) != ''
     AND NOT EXISTS (
         SELECT 1 FROM cards c WHERE c.word_id=w.id AND c.track='productive'
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM experiment_arms e
+        WHERE e.word_id=w.id AND e.experiment='E2' AND e.arm='control'
     )
 """
 
@@ -170,10 +174,16 @@ def next_item(conn: sqlite3.Connection, now: datetime | None = None) -> dict:
         word = conn.execute("SELECT * FROM words WHERE id=?",
                             (card["word_id"],)).fetchone()
     elif new_left:
-        word = conn.execute(
-            f"SELECT w.* FROM words w WHERE {_ELIGIBLE} "
-            "ORDER BY w.stability DESC, w.id LIMIT 1",
-            (MIN_RECEPTIVE_STABILITY,)).fetchone()
+        # E2: cada palabra se asigna al introducirla; las de control se quedan
+        # sólo con Review y se busca la siguiente.
+        while True:
+            word = conn.execute(
+                f"SELECT w.* FROM words w WHERE {_ELIGIBLE} "
+                "ORDER BY w.stability DESC, w.id LIMIT 1",
+                (MIN_RECEPTIVE_STABILITY,)).fetchone()
+            if word is None or experiments.arm(conn, "E2", word["id"]) == "recall":
+                break
+        conn.commit()
     return {"item": _item(conn, word, card) if word else None,
             "due": due, "new_left": new_left}
 

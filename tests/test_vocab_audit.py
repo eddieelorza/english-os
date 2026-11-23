@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app import ai, db, jobs, vocab_audit  # noqa: E402
+from app import ai, db, experiments, jobs, vocab_audit  # noqa: E402
 
 
 def answer(**extra):
@@ -43,6 +43,10 @@ class AuditCase(unittest.TestCase):
     def setUp(self):
         self.conn = db.connect(":memory:")
         self.addCleanup(self.conn.close)
+        # E1 se prueba en test_experiments; aquí toda palabra va a «repair».
+        arm = mock.patch.object(experiments, "arm", return_value="repair")
+        arm.start()
+        self.addCleanup(arm.stop)
 
     def word(self, word="cabin", **extra):
         active = extra.pop("active", True)

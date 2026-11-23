@@ -527,7 +527,19 @@ export interface ResumeResult {
   anki?: { reachable: boolean; cards: number }
 }
 
-export type DayBlockKey = 'review' | 'recall' | 'write' | 'reading'
+export type DayBlockKey = 'quiz' | 'review' | 'recall' | 'write' | 'reading'
+
+/* The delayed test of experiments E1/E2: no answer or verdict comes back. */
+export interface QuizNext {
+  item: { probe_id: number; sentence: string; hint: string } | null
+  left: number
+}
+
+type ArmProbes = Record<'7' | '30', { answered: number; right: number }>
+export interface ExperimentsSummary {
+  E1: Record<'repair' | 'control', { words: number; probes: ArmProbes; lapses_after: number }>
+  E2: Record<'recall' | 'control', { words: number; probes: ArmProbes }>
+}
 
 /* Check-in (ADR-018): estimates with low confidence, never a certified level. */
 export interface VocabResult {
@@ -838,6 +850,15 @@ export interface Material {
 
 export const api = {
   summary: () => request<Summary>('/api/summary'),
+
+  quiz: () => request<QuizNext>('/api/quiz'),
+  quizAnswer: (probe_id: number, answer: string) =>
+    request<QuizNext & { saved: boolean }>('/api/quiz/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ probe_id, answer }),
+    }),
+  experiments: () => request<ExperimentsSummary>('/api/experiments'),
 
   baseline: () => request<BaselineLatest>('/api/baseline'),
   baselineVocabItems: () => request<{ items: string[] }>('/api/baseline/vocab'),

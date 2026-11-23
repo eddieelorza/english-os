@@ -6,7 +6,7 @@ import json
 import re
 import sqlite3
 
-from app import ai, db, glossary
+from app import ai, db, experiments, glossary
 
 POSITIONS = ("noun", "verb", "adjective", "adverb", "phrase", "other")
 
@@ -95,8 +95,14 @@ def candidates(conn: sqlite3.Connection, limit: "int | None" = None) -> list:
         "AND NOT EXISTS (SELECT 1 FROM senses s WHERE s.word_id=w.id) "
         "ORDER BY COALESCE(lapses, 0) DESC, COALESCE(difficulty, 0) DESC, w.id"
     ).fetchall()
-    return [row for row in rows if any(f in flags(row) for f in
-            ("no_gloss", "gloss_not_in_example"))][:limit]
+    flagged = [row for row in rows if any(f in flags(row) for f in
+               ("no_gloss", "gloss_not_in_example"))]
+    # E1: entre las palabras en estudio con la glosa desalineada, la mitad de
+    # control conserva su glosa; sólo el grupo «repair» llega a la cola.
+    kept = [row for row in flagged if row["fsrs_card"] is None
+            or experiments.arm(conn, "E1", row["id"]) == "repair"]
+    conn.commit()
+    return kept[:limit]
 
 
 _LEADING = {"no", "se", "me", "te", "le", "les", "nos"}

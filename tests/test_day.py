@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app import day, db, pause, recall, session, srs, writing  # noqa: E402
+from app import day, db, experiments, pause, recall, session, srs, writing  # noqa: E402
 
 QUEUE = {"due": 0, "new_available": 0, "learning_now": 0, "reviewed_today": 0}
 NOTHING = {"item": None, "due": 0, "new_left": 5}
@@ -82,6 +82,15 @@ class TestPlan(DayCase):
         p = self.plan()
         self.assertEqual(self.keys(p), [("recall", True), ("write", True)])
         self.assertIsNone(p["next"])
+
+    def test_a_due_quiz_goes_first(self):
+        wid = db.upsert_word(self.conn, {"word": "cabin", "example_en": "A small cabin."})
+        experiments.arm(self.conn, "E2", wid)
+        self.conn.execute("UPDATE probes SET due_at='2000-01-01T00:00:00'")
+        self.conn.commit()
+        p = self.plan({"due": 3})
+        self.assertEqual(self.keys(p)[:2], [("quiz", False), ("review", False)])
+        self.assertEqual(p["blocks"][0]["detail"], "2 surprise questions")
 
     def test_micro_needs_words(self):
         self.assertEqual(writing.micro(self.conn)["steps"], [])

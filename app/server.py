@@ -28,7 +28,7 @@ from app import (activities, ai, backlog, coach, conversation, day, db, deck, ga
                  shadowing,
                  explain, generator,
                  jobs, lemma, library, model, pause, podcast, routine, session, speaking,
-                 baseline, recall, srs, tts, vocab_audit, writing)
+                 baseline, experiments, recall, srs, tts, vocab_audit, writing)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -448,6 +448,34 @@ def baseline_dictation(body: DictationAnswers) -> dict:
                                  baseline.score_dictation(responses), responses)
         except ValueError as exc:
             raise HTTPException(422, str(exc))
+
+
+# ── Experimentos E1/E2 y su prueba diferida (ADR-018) ─────────────────────
+
+class QuizAnswer(BaseModel):
+    probe_id: int
+    answer: str = Field(max_length=80)
+
+
+@app.get("/api/quiz")
+def quiz_next() -> dict:
+    with get_db() as conn:
+        return experiments.quiz(conn)
+
+
+@app.post("/api/quiz/answer")
+def quiz_answer(body: QuizAnswer) -> dict:
+    with get_db() as conn:
+        try:
+            return experiments.answer(conn, body.probe_id, body.answer)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+
+@app.get("/api/experiments")
+def experiments_summary() -> dict:
+    with get_db() as conn:
+        return experiments.summary(conn)
 
 
 class ReviewAnswer(BaseModel):

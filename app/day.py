@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from app import db, gate, pause, recall, session, srs, writing
+from app import db, experiments, gate, pause, recall, session, srs, writing
 
 
 def _review(conn: sqlite3.Connection) -> "dict | None":
@@ -42,6 +42,17 @@ def _recall(conn: sqlite3.Connection) -> "dict | None":
     # taparía la sección Recall y «Continue — Recall» llevaría a otra cosa.
     return {"key": "recall", "title": "Recall", "route": "/recall", "done": not left,
             "detail": f"{left} to recall" if left else f"{answered} recalled today"}
+
+
+def _quiz(conn: sqlite3.Connection) -> "dict | None":
+    """La prueba diferida de E1/E2: corta, y sólo cuando hay alguna vencida."""
+    left = experiments.quiz(conn)["left"]
+    answered = experiments._answered_today(conn)
+    if not left and not answered:
+        return None
+    return {"key": "quiz", "title": "Quiz", "route": "/quiz", "done": not left,
+            "detail": (f"{left} surprise {'question' if left == 1 else 'questions'}" if left
+                       else f"{answered} answered today")}
 
 
 def _write(conn: sqlite3.Connection) -> "dict | None":
@@ -82,6 +93,8 @@ def plan(conn: sqlite3.Connection) -> dict:
         return {"paused": True, "blocks": [], "next": None}
     # Write va justo después de Recall: usa las palabras recién recuperadas
     # mientras siguen frescas; la lectura, más larga, cierra.
-    blocks = [b for b in (_review(conn), _recall(conn), _write(conn), _reading(conn)) if b]
+    # Quiz va primero: mide lo retenido antes de que el repaso del día lo refresque.
+    blocks = [b for b in (_quiz(conn), _review(conn), _recall(conn), _write(conn),
+                          _reading(conn)) if b]
     nxt = next((b for b in blocks if not b["done"]), None)
     return {"paused": False, "blocks": blocks, "next": nxt}

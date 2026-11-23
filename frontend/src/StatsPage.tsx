@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
-import type { BaselineLatest, Stats } from './api'
+import type { BaselineLatest, ExperimentsSummary, Stats } from './api'
 import { Link } from 'react-router-dom'
 import { ErrorLine, Page, PageHeader, RuledSkeleton, fmt } from './ui'
 
-/* Lesson 06: evidence over sensation (Vision P4), drawn.
-   Chart grammar per the dataviz method: one series per chart (cobalt, no
-   legends), thin marks with rounded data-ends, hairline grid, text in ink
-   tokens, hover tooltips, honest gaps where data is missing. */
 /* The check-in's latest estimates, one line. Its own fetch: if it fails the
    stats still render. */
 function CheckInLine() {
@@ -34,6 +30,46 @@ function CheckInLine() {
   )
 }
 
+/* E1/E2 as they fill in: words per group and delayed-test results. Raw
+   counts, no verdict — with one learner a difference needs many words. */
+function ExperimentsLines() {
+  const [s, setS] = useState<ExperimentsSummary | null>(null)
+  useEffect(() => {
+    api.experiments().then(setS).catch(() => setS(null))
+  }, [])
+  if (!s) return null
+  const probe = (p: ExperimentsSummary['E1']['repair']['probes']) =>
+    (['7', '30'] as const)
+      .map((d) => (p[d].answered ? `${d}-day ${fmt(p[d].right)}/${fmt(p[d].answered)}` : null))
+      .filter(Boolean)
+      .join(', ') || 'no checks yet'
+  const words = (n: number) => `${fmt(n)} ${n === 1 ? 'word' : 'words'}`
+  const rows = [
+    ['Repaired gloss (E1)', `${words(s.E1.repair.words)} · ${probe(s.E1.repair.probes)} · ${fmt(s.E1.repair.lapses_after)} lapses`,
+      `${words(s.E1.control.words)} · ${probe(s.E1.control.probes)} · ${fmt(s.E1.control.lapses_after)} lapses`],
+    ['Typed recall (E2)', `${words(s.E2.recall.words)} · ${probe(s.E2.recall.probes)}`,
+      `${words(s.E2.control.words)} · ${probe(s.E2.control.probes)}`],
+  ]
+  return (
+    <section className="mt-8">
+      <h3 className="text-sm font-bold tracking-tight">Experiments</h3>
+      <dl className="border-rule mt-3 border-t">
+        {rows.map(([name, treated, control]) => (
+          <div key={name} className="border-rule grid gap-x-4 gap-y-1 border-b py-2.5 text-sm sm:grid-cols-[12rem_1fr_1fr]">
+            <dt className="font-semibold">{name}</dt>
+            <dd className="tnum">With: {treated}</dd>
+            <dd className="tnum text-ink-soft">Without: {control}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+/* Lesson 06: evidence over sensation (Vision P4), drawn.
+   Chart grammar per the dataviz method: one series per chart (cobalt, no
+   legends), thin marks with rounded data-ends, hairline grid, text in ink
+   tokens, hover tooltips, honest gaps where data is missing. */
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState(false)
@@ -85,6 +121,7 @@ export default function StatsPage() {
           </dl>
 
           <CheckInLine />
+          <ExperimentsLines />
 
           {/* What the level is actually read from (ADR-008): four sources,
               each with its sample. A gap here is stated, never guessed. */}
