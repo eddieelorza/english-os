@@ -183,6 +183,17 @@ class SettingsTests(unittest.TestCase):
         self.assertNotIn("AI_MODEL", os.environ)
         self.assertEqual(sorted(path.name for path in self.path.parent.iterdir()), [".env", ".env.bak"])
 
+    def test_scoped_key_falls_back_to_a_tiny_paid_sample(self):
+        import urllib.error
+        from app import tts
+        self.configure_voice()
+        self.urlopen.side_effect = urllib.error.HTTPError(
+            "u", 401, "x", {}, io.BytesIO(b'{"detail":{"status":"missing_permissions"}}'))
+        with mock.patch.object(tts, "_eleven", return_value=(None, {})) as sample:
+            response = self.voice()
+        self.assertTrue(response.json()["ok"])
+        sample.assert_called_once_with("Hi.")
+
     def test_voice_metadata_request(self):
         self.configure_voice()
         self.urlopen.return_value = io.BytesIO(b'{"name":"Eddie"}')

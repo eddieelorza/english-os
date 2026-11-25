@@ -76,7 +76,7 @@ def own_voice_configured() -> bool:
 
 
 def test_own_voice() -> dict:
-    """Read voice metadata only: no synthesis and no credits spent."""
+    """Free when the key can read voices; else a 3-credit sample, paid once per voice."""
     key = os.environ.get("ELEVENLABS_API_KEY", "")
     voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "")
     if not key or not voice_id:
@@ -96,7 +96,22 @@ def test_own_voice() -> dict:
         return {"ok": True, "voice_name": name.replace(key, "[redacted]")}
     except urllib.error.HTTPError as exc:
         code = exc.code
-        exc.close()
+        try:
+            scoped = b"missing_permissions" in exc.read()
+        except Exception:
+            scoped = False
+        finally:
+            exc.close()
+        if code == 401 and scoped:
+            # A key limited to Text to Speech cannot read voice details. Test
+            # what the app actually does instead: a 3-character sample, paid
+            # once per voice (the paid-response cache keeps it).
+            try:
+                _eleven("Hi.")
+            except TTSUnavailable as fail:
+                return {"ok": False, "error": str(fail)}
+            return {"ok": True, "voice_name": "your clone (checked with a 3-credit sample; "
+                                              "this key cannot read voice names, which is fine)"}
         message = {401: "ElevenLabs rejected the API key.",
                    403: "This API key cannot access the voice.",
                    404: "Voice not found. Check the saved voice ID.",
@@ -130,12 +145,15 @@ def _eleven_request(text: str) -> tuple[bytes, dict]:
         # Never surface the upstream body, URL, headers or exception: any of
         # them could echo credentials. Inspect only the quota status marker.
         try:
-            quota = b"quota_exceeded" in exc.read()
+            body = exc.read()
         except Exception:
-            quota = False
+            body = b""
         finally:
             exc.close()
-        if exc.code == 401:
+        quota = b"quota_exceeded" in body
+        if exc.code == 401 and b"missing_permissions" in body:
+            message = "La clave de ElevenLabs no tiene permiso de Text to Speech"
+        elif exc.code == 401:
             message = "ElevenLabs rechazó la clave"
         elif exc.code == 402 or quota:
             message = "Se acabaron los créditos de ElevenLabs"
